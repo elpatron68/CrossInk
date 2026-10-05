@@ -9,6 +9,7 @@
 - Mail bridge pairing page notes that each additional reader needs its own alias/account, and can optionally load Plausible Analytics via `PLAUSIBLE_DOMAIN`.
 - Mail bridge: delete never-synced accounts after 7 days and inactive accounts after 365 days; rate-limit account creation per IP (proxy-aware).
 - Mail bridge Docker image: non-root container, healthcheck, `./start-docker.sh` for WSL Compose bring-up.
+- Mail bridge pairing page favicon (simple envelope SVG).
 
 ### Fixed
 
