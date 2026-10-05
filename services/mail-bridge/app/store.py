@@ -116,6 +116,9 @@ class ItemStore:
                 "WHERE imap_uid IS NOT NULL"
             )
             conn.execute("CREATE INDEX IF NOT EXISTS idx_devices_token_hash ON devices(token_hash)")
+            cols = {row[1] for row in conn.execute("PRAGMA table_info(devices)").fetchall()}
+            if "last_seen_at" not in cols:
+                conn.execute("ALTER TABLE devices ADD COLUMN last_seen_at TEXT")
 
     def format_alias_email(self, mail_local: str) -> str:
         return f"{self.mail_local_prefix}+{mail_local}@{self.mail_domain}"
@@ -275,19 +278,170 @@ class ItemStore:
             path=Path(row["path"]),
         )
 
-    def ack(self, item_id: str, user_id: str) -> bool:
-        """Mark pending item delivered. Idempotent if already delivered. Returns False if missing."""
+    def ack(self, item_id: str, user_id: str, *, delete_files: bool = False) -> bool:
+        """Mark pending item delivered. Idempotent if already delivered. Returns False if missing.
+
+        When delete_files is True, remove the blob and the DB row after a successful ack
+        (also cleans up an already-delivered row on repeat ack).
+        """
         with self._conn() as conn:
             row = conn.execute(
-                "SELECT status FROM items WHERE id = ? AND user_id = ?",
+                "SELECT status, path FROM items WHERE id = ? AND user_id = ?",
                 (item_id, user_id),
             ).fetchone()
             if row is None:
                 return False
-            if row["status"] == "delivered":
-                return True
-            conn.execute(
-                "UPDATE items SET status = 'delivered' WHERE id = ? AND user_id = ?",
-                (item_id, user_id),
-            )
+            if row["status"] != "delivered":
+                conn.execute(
+                    "UPDATE items SET status = 'delivered' WHERE id = ? AND user_id = ?",
+                    (item_id, user_id),
+                )
+            if delete_files:
+                path = Path(row["path"])
+                try:
+                    if path.is_file():
+                        path.unlink()
+                except OSError:
+                    pass
+                conn.execute("DELETE FROM items WHERE id = ? AND user_id = ?", (item_id, user_id))
             return True
+
+    def touch_device_for_token(self, device_token: str) -> None:
+        token_hash = hash_device_token(device_token.strip())
+        now = _utc_now_iso()
+        with self._conn() as conn:
+            conn.execute(
+                "UPDATE devices SET last_seen_at = ? WHERE token_hash = ?",
+                (now, token_hash),
+            )
+
+    def delete_user(self, user_id: str) -> bool:
+        """Remove user, devices, items rows and on-disk files. Returns False if user missing."""
+        user_dir = self.items_dir / user_id
+        with self._conn() as conn:
+            if conn.execute("SELECT 1 FROM users WHERE id = ?", (user_id,)).fetchone() is None:
+                return False
+            rows = conn.execute("SELECT path FROM items WHERE user_id = ?", (user_id,)).fetchall()
+            for row in rows:
+                path = Path(row["path"])
+                try:
+                    if path.is_file():
+                        path.unlink()
+                except OSError:
+                    pass
+            conn.execute("DELETE FROM items WHERE user_id = ?", (user_id,))
+            conn.execute("DELETE FROM devices WHERE user_id = ?", (user_id,))
+            conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
+        if user_dir.is_dir():
+            for child in user_dir.iterdir():
+                try:
+                    if child.is_file():
+                        child.unlink()
+                except OSError:
+                    pass
+            try:
+                user_dir.rmdir()
+            except OSError:
+                pass
+        return True
+
+    def purge_unused_accounts(self, *, older_than_days: int) -> int:
+        if older_than_days <= 0:
+            return 0
+        cutoff = datetime.now(timezone.utc).timestamp() - (older_than_days * 86400)
+        removed = 0
+        with self._conn() as conn:
+            rows = conn.execute(
+                """
+                SELECT u.id, u.created_at
+                FROM users u
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM devices d
+                    WHERE d.user_id = u.id AND d.last_seen_at IS NOT NULL AND d.last_seen_at != ''
+                )
+                """
+            ).fetchall()
+            victims = []
+            for row in rows:
+                try:
+                    created = datetime.fromisoformat(row["created_at"])
+                    if created.tzinfo is None:
+                        created = created.replace(tzinfo=timezone.utc)
+                    if created.timestamp() <= cutoff:
+                        victims.append(row["id"])
+                except ValueError:
+                    continue
+        for user_id in victims:
+            if self.delete_user(user_id):
+                removed += 1
+        return removed
+
+    def purge_inactive_accounts(self, *, older_than_days: int) -> int:
+        if older_than_days <= 0:
+            return 0
+        cutoff = datetime.now(timezone.utc).timestamp() - (older_than_days * 86400)
+        removed = 0
+        with self._conn() as conn:
+            rows = conn.execute(
+                """
+                SELECT u.id, u.created_at,
+                       (SELECT MAX(d.last_seen_at) FROM devices d WHERE d.user_id = u.id) AS last_seen,
+                       (SELECT MAX(i.received_at) FROM items i WHERE i.user_id = u.id) AS last_mail
+                FROM users u
+                WHERE EXISTS (
+                    SELECT 1 FROM devices d
+                    WHERE d.user_id = u.id AND d.last_seen_at IS NOT NULL AND d.last_seen_at != ''
+                )
+                """
+            ).fetchall()
+            victims = []
+            for row in rows:
+                stamps = [row["created_at"], row["last_seen"], row["last_mail"]]
+                activity = None
+                for stamp in stamps:
+                    if not stamp:
+                        continue
+                    try:
+                        dt = datetime.fromisoformat(stamp)
+                        if dt.tzinfo is None:
+                            dt = dt.replace(tzinfo=timezone.utc)
+                        if activity is None or dt > activity:
+                            activity = dt
+                    except ValueError:
+                        continue
+                if activity is not None and activity.timestamp() <= cutoff:
+                    victims.append(row["id"])
+        for user_id in victims:
+            if self.delete_user(user_id):
+                removed += 1
+        return removed
+
+    def purge_orphans(self, *, older_than_days: int) -> int:
+        """Delete pending items (and files) older than older_than_days. Returns count removed."""
+        if older_than_days <= 0:
+            return 0
+        cutoff = datetime.now(timezone.utc).timestamp() - (older_than_days * 86400)
+        removed = 0
+        with self._conn() as conn:
+            rows = conn.execute(
+                "SELECT id, path, received_at FROM items WHERE status = 'pending'"
+            ).fetchall()
+            for row in rows:
+                try:
+                    # received_at is ISO-8601; fromisoformat handles offsets.
+                    received = datetime.fromisoformat(row["received_at"])
+                    if received.tzinfo is None:
+                        received = received.replace(tzinfo=timezone.utc)
+                    if received.timestamp() > cutoff:
+                        continue
+                except ValueError:
+                    continue
+                path = Path(row["path"])
+                try:
+                    if path.is_file():
+                        path.unlink()
+                except OSError:
+                    pass
+                conn.execute("DELETE FROM items WHERE id = ?", (row["id"],))
+                removed += 1
+        return removed
