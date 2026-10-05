@@ -5,16 +5,18 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import AsyncIterator
 
-from fastapi import Depends, FastAPI, HTTPException, status
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from . import __version__
 from .auth import require_device_token
+from .cleanup import OrphanCleanupWorker
 from .config import Settings, get_settings
 from .imap_worker import ImapWorker
 from .mime_extract import safe_filename
+from .rate_limit import SignupRateLimiter, client_ip
 from .store import ItemStore
 
 LOG = logging.getLogger("mail-bridge")
@@ -57,18 +59,24 @@ def create_app(settings: Settings | None = None, store: ItemStore | None = None)
         mail_local_length=settings.mail_local_length,
     )
     worker = ImapWorker(settings, store)
+    orphan_cleanup = OrphanCleanupWorker(settings, store)
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
         worker.start()
+        orphan_cleanup.start()
         yield
+        orphan_cleanup.stop()
         worker.stop()
 
+    rate_limiter = SignupRateLimiter()
     app = FastAPI(title="CrossInk Mail Bridge", version=__version__, lifespan=lifespan)
     app.state.settings = settings
     app.state.store = store
+    app.state.rate_limiter = rate_limiter
     app.state.worker = worker
+    app.state.orphan_cleanup = orphan_cleanup
     app.dependency_overrides[get_settings] = lambda: settings
 
     @app.get("/v1/health", response_model=HealthOut)
@@ -80,7 +88,13 @@ def create_app(settings: Settings | None = None, store: ItemStore | None = None)
         )
 
     @app.post("/v1/accounts", response_model=CreateAccountOut, status_code=status.HTTP_201_CREATED)
-    def create_account(body: CreateAccountIn) -> CreateAccountOut:
+    def create_account(body: CreateAccountIn, request: Request) -> CreateAccountOut:
+        ip = client_ip(request, trust_proxy=settings.trust_proxy)
+        if not rate_limiter.allow(ip, limit_per_hour=settings.signup_rate_limit_per_hour):
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Rate limit exceeded",
+            )
         token = body.device_token.strip()
         try:
             created = store.create_account(token)
@@ -128,16 +142,27 @@ def create_app(settings: Settings | None = None, store: ItemStore | None = None)
 
     @app.post("/v1/items/{item_id}/ack")
     def item_ack(item_id: str, user_id: str = Depends(require_device_token)) -> JSONResponse:
-        if not store.ack(item_id, user_id=user_id):
+        if not store.ack(item_id, user_id=user_id, delete_files=settings.delete_on_ack):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not found")
         return JSONResponse({"ok": True, "id": item_id})
 
-    @app.get("/")
-    def pairing_page() -> FileResponse:
+    @app.get("/", response_model=None)
+    def pairing_page() -> HTMLResponse:
         index = STATIC_DIR / "index.html"
         if not index.is_file():
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pairing UI missing")
-        return FileResponse(index)
+        html = index.read_text(encoding="utf-8")
+        domain = (settings.plausible_domain or "").strip()
+        if domain:
+            script_url = (settings.plausible_script_url or "https://plausible.io/js/script.js").strip()
+            safe_domain = domain.replace('"', "")
+            safe_script = script_url.replace('"', "")
+            snippet = (
+                f'<script defer data-domain="{safe_domain}" src="{safe_script}"></script>\n'
+                "  <!-- PLAUSIBLE -->"
+            )
+            html = html.replace("<!-- PLAUSIBLE -->", snippet, 1)
+        return HTMLResponse(html)
 
     if STATIC_DIR.is_dir():
         app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
