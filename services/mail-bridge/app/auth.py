@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import logging
+
 from fastapi import HTTPException, Request, Security, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from .store import ItemStore
 
+LOG = logging.getLogger("mail-bridge.auth")
 _bearer = HTTPBearer(auto_error=False)
 
 
@@ -22,4 +25,8 @@ def require_device_token(
     user_id = store.user_id_for_token(token)
     if user_id is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid device token")
+    try:
+        store.touch_device_for_token(token)
+    except Exception:
+        LOG.exception("Failed to touch last_seen_at")
     return user_id
