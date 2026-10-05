@@ -8,6 +8,8 @@ exposes them over a Bearer-token API.
 
 ## Quick start
 
+### Local (venv)
+
 ```bash
 cd services/mail-bridge
 cp .env.example .env
@@ -17,20 +19,27 @@ pip install -r requirements.txt
 ./start-local.sh
 ```
 
+### Docker (recommended on WSL2)
+
+```bash
+cd services/mail-bridge
+cp .env.example .env
+# Edit MAIL_* and IMAP_* …
+./start-docker.sh
+# or: docker compose up --build -d && curl -s http://localhost:8080/v1/health
+```
+
+Data persists in the named volume `mail-bridge-data` (`DATA_DIR=/data` inside the container).
+Stop with `docker compose down` (volume kept) or `docker compose down -v` (wipe queue).
+
 Open `http://localhost:8080/` → **Create account**. The browser generates the
 device token; copy the email alias + token into the reader
 (Settings → Email Sync).
 
-Docker:
-
-```bash
-docker compose up --build -d
-curl -s http://localhost:8080/v1/health
-```
-
 On WSL2, devices on the LAN typically need a Windows `netsh interface portproxy`
 from the host LAN IP `:8080` to the WSL IP `:8080`. Use that Windows LAN address
-as the Bridge URL on the reader.
+as the Bridge URL on the reader. Behind nginx Proxy Manager, set `TRUST_PROXY=true`
+(default) so signup rate limits use the real client IP.
 
 ## API
 

@@ -1,15 +1,32 @@
 services:
   mail-bridge:
     build: .
+    image: crossink-mail-bridge:local
+    container_name: crossink-mail-bridge
     ports:
       - "${PORT:-8080}:8080"
     env_file:
       - .env
     environment:
+      # Force container paths regardless of host .env DATA_DIR=./data
       DATA_DIR: /data
+      HOST: 0.0.0.0
+      PORT: "8080"
     volumes:
       - mail-bridge-data:/data
     restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/v1/health', timeout=3)",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
 
 volumes:
   mail-bridge-data:
