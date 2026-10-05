@@ -4,6 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>CrossInk Mail Bridge</title>
+  <!-- PLAUSIBLE -->
   <style>
     :root {
       --bg: #f4f1ea;
@@ -118,6 +119,8 @@
     <p class="lede" data-i18n-html="lede"></p>
 
     <button id="createBtn" type="button" data-i18n="createBtn">Create account</button>
+    <p class="hint" style="margin-top:0.85rem" data-i18n="multiDevice"></p>
+    <p class="hint" data-i18n="retention"></p>
     <p id="error" class="error" role="alert"></p>
 
     <section id="result" class="result" aria-live="polite">
@@ -153,6 +156,7 @@
         lede: "Create an account to get a private email alias and a device token. Send <code>.epub</code> / <code>.txt</code> books to the alias, then sync on your reader.",
         createBtn: "Create account",
         createdBtn: "Account created",
+        multiDevice: "Multiple readers? Create a separate account (alias + token) for each device — one alias maps to one inbox queue.",
         labelEmail: "Email alias",
         labelToken: "Device token",
         labelUrl: "Bridge URL",
@@ -160,14 +164,18 @@
         copied: "Copied",
         copyFailed: "Failed",
         warn: "<strong>Important:</strong> This screen is shown only once. Save the Bridge URL, email alias, and device token in a safe place — the server cannot show them again. Share the email alias only with people you trust (anyone who can send to it can queue books for your reader).",
-        hint: "On the reader: Settings → Email Sync → Bridge URL + Device Token.",
+        hint: "On the reader: Settings → Email Sync → Bridge URL + Device Token. Extra devices need their own account (new alias), not a shared token.",
         errorGeneric: "Something went wrong.",
+        retention:
+          "Accounts that never sync are removed after 7 days. Accounts with no sync and no mail for 365 days are removed.",
+        errorRateLimit: "Too many accounts from this network. Try again in an hour.",
       },
       de: {
         title: "CrossInk Mail Bridge",
         lede: "Lege einen Account an, um einen privaten E-Mail-Alias und ein Gerätetoken zu erhalten. Sende <code>.epub</code>- / <code>.txt</code>-Bücher an den Alias und synchronisiere danach auf dem Reader.",
         createBtn: "Account anlegen",
         createdBtn: "Account angelegt",
+        multiDevice: "Mehrere Reader? Für jedes Gerät einen eigenen Account (Alias + Token) anlegen — ein Alias gehört zu einer Warteschlange.",
         labelEmail: "E-Mail-Alias",
         labelToken: "Gerätetoken",
         labelUrl: "Bridge-URL",
@@ -175,8 +183,11 @@
         copied: "Kopiert",
         copyFailed: "Fehler",
         warn: "<strong>Wichtig:</strong> Diese Angaben werden nur einmal angezeigt. Bridge-URL, E-Mail-Alias und Gerätetoken unbedingt an einem sicheren Ort speichern — der Server kann sie nicht erneut anzeigen. Den E-Mail-Alias nur an vertrauenswürdige Personen weitergeben (jeder Absender kann Bücher in deine Warteschlange legen).",
-        hint: "Am Reader: Einstellungen → E-Mail-Sync → Bridge-URL + Gerätetoken.",
+        hint: "Am Reader: Einstellungen → E-Mail-Sync → Bridge-URL + Gerätetoken. Weitere Geräte brauchen einen eigenen Account (neuen Alias), kein gemeinsames Token.",
         errorGeneric: "Etwas ist schiefgelaufen.",
+        retention:
+          "Accounts ohne Sync werden nach 7 Tagen gelöscht. Accounts ohne Sync und ohne Mail seit 365 Tagen ebenfalls.",
+        errorRateLimit: "Zu viele Accounts aus diesem Netzwerk. Bitte in einer Stunde erneut versuchen.",
       },
     };
 
@@ -271,6 +282,9 @@
         });
         const body = await res.json().catch(() => ({}));
         if (!res.ok) {
+          if (res.status === 429) {
+            throw new Error(t.errorRateLimit);
+          }
           const detail = body.detail;
           throw new Error(typeof detail === "string" ? detail : (t.errorGeneric + " (HTTP " + res.status + ")"));
         }

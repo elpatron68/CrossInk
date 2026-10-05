@@ -61,6 +61,18 @@ Response (201) — token is never echoed:
 
 Alias form: `{MAIL_LOCAL_PREFIX}+{mail_local}@{MAIL_DOMAIN}`.
 
+Retention / cleanup (see `.env.example`):
+
+- `POST_PROCESS=delete` (default) removes matched mail after queueing; `move` / `seen` remain available
+- Unknown aliases and mails without allowed attachments are always deleted from IMAP
+- `DELETE_ON_ACK=true` removes the stored file after the device acks
+- `ORPHAN_RETENTION_DAYS=14` purges pending items never downloaded (0 disables)
+- `ACCOUNT_UNUSED_DAYS=7` deletes accounts that never synced (0 disables)
+- `ACCOUNT_INACTIVE_DAYS=365` deletes accounts with no sync and no received mail for that long (0 disables)
+- `SIGNUP_RATE_LIMIT_PER_HOUR=5` caps `POST /v1/accounts` per client IP per rolling hour (429 when exceeded; 0 disables)
+- `TRUST_PROXY=true` uses `X-Forwarded-For` / `X-Real-IP` for that IP when the bridge sits behind nginx or similar
+- Optional `PLAUSIBLE_DOMAIN` injects Plausible Analytics into the pairing page
+
 ### curl smoke
 
 ```bash
