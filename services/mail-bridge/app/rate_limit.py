@@ -9,14 +9,14 @@ from starlette.requests import Request
 
 def client_ip(request: Request, *, trust_proxy: bool) -> str:
     if trust_proxy:
+        real_ip = (request.headers.get("x-real-ip") or "").strip()
+        if real_ip:
+            return real_ip
         xff = request.headers.get("x-forwarded-for")
         if xff:
             first = xff.split(",")[0].strip()
             if first:
                 return first
-        real_ip = (request.headers.get("x-real-ip") or "").strip()
-        if real_ip:
-            return real_ip
     if request.client and request.client.host:
         return request.client.host
     return "unknown"
@@ -29,6 +29,11 @@ class SignupRateLimiter:
         self._lock = threading.Lock()
         self._hits: dict[str, deque[float]] = defaultdict(deque)
 
+    def _prune_empty_keys(self) -> None:
+        empty = [key for key, q in self._hits.items() if not q]
+        for key in empty:
+            del self._hits[key]
+
     def allow(self, ip: str, *, limit_per_hour: int) -> bool:
         if limit_per_hour <= 0:
             return True
@@ -38,7 +43,11 @@ class SignupRateLimiter:
             q = self._hits[ip]
             while q and (now - q[0]) > window:
                 q.popleft()
+            if not q:
+                self._hits.pop(ip, None)
+                q = self._hits[ip]
             if len(q) >= limit_per_hour:
+                self._prune_empty_keys()
                 return False
             q.append(now)
             return True

@@ -119,6 +119,9 @@ class ItemStore:
             cols = {row[1] for row in conn.execute("PRAGMA table_info(devices)").fetchall()}
             if "last_seen_at" not in cols:
                 conn.execute("ALTER TABLE devices ADD COLUMN last_seen_at TEXT")
+                conn.execute(
+                    "UPDATE devices SET last_seen_at = created_at WHERE last_seen_at IS NULL"
+                )
 
     def format_alias_email(self, mail_local: str) -> str:
         return f"{self.mail_local_prefix}+{mail_local}@{self.mail_domain}"

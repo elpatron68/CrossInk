@@ -82,7 +82,7 @@ def test_create_account_conflict(client: TestClient) -> None:
     assert client.post("/v1/accounts", json={"device_token": token}).status_code == 409
 
 
-def test_tenant_isolation(client: TestClient, store: ItemStore) -> None:
+def test_tenant_isolation(client: TestClient, store: ItemStore, settings: Settings) -> None:
     token_a = _token()
     token_b = _token()
     a = client.post("/v1/accounts", json={"device_token": token_a}).json()
@@ -96,6 +96,7 @@ def test_tenant_isolation(client: TestClient, store: ItemStore) -> None:
         imap_uid="1",
         user_id=a["user_id"],
     )
+    path = item.path
 
     headers_a = {"Authorization": f"Bearer {token_a}"}
     headers_b = {"Authorization": f"Bearer {token_b}"}
@@ -108,6 +109,9 @@ def test_tenant_isolation(client: TestClient, store: ItemStore) -> None:
     assert client.post(f"/v1/items/{item.id}/ack", headers=headers_a).status_code == 200
     assert client.get("/v1/pending", headers=headers_a).json() == []
     assert b["user_id"] != a["user_id"]
+    if settings.delete_on_ack:
+        assert not path.exists()
+        assert store.get_item(item.id, a["user_id"]) is None
 
 
 def test_pairing_page_served(client: TestClient) -> None:
@@ -146,3 +150,27 @@ def test_match_plus_alias() -> None:
         )
         == "prio"
     )
+
+
+def test_pairing_page_has_multi_device_hint(client: TestClient) -> None:
+    r = client.get("/")
+    assert r.status_code == 200
+    assert "multiDevice" in r.text
+    assert "plausible.io" not in r.text
+
+
+def test_pairing_page_injects_plausible(tmp_path: Path, store: ItemStore) -> None:
+    settings = Settings(
+        _env_file=None,
+        data_dir=tmp_path,
+        mail_local_prefix="bookbridge",
+        mail_domain="hoerdle.de",
+        plausible_domain="bookbridge.example",
+        plausible_script_url="https://plausible.io/js/script.js",
+    )
+    app = create_app(settings=settings, store=store)
+    with TestClient(app) as client:
+        r = client.get("/")
+    assert r.status_code == 200
+    assert 'data-domain="bookbridge.example"' in r.text
+    assert 'src="https://plausible.io/js/script.js"' in r.text

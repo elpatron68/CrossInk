@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
 from fastapi.testclient import TestClient
 
 from app.config import Settings
@@ -44,6 +43,15 @@ def test_client_ip_trust_proxy_xff() -> None:
     request = Request(scope)
     assert client_ip(request, trust_proxy=True) == "203.0.113.10"
     assert client_ip(request, trust_proxy=False) == "10.0.0.1"
+
+    scope_both = {
+        **scope,
+        "headers": [
+            (b"x-real-ip", b"198.51.100.99"),
+            (b"x-forwarded-for", b"203.0.113.10, 10.0.0.1"),
+        ],
+    }
+    assert client_ip(Request(scope_both), trust_proxy=True) == "198.51.100.99"
 
 
 def test_accounts_endpoint_rate_limited(tmp_path: Path) -> None:

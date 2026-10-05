@@ -15,6 +15,36 @@ from .store import ItemStore
 LOG = logging.getLogger("mail-bridge.imap")
 
 
+def dispose_uid(
+    client: imaplib.IMAP4,
+    uid: str,
+    *,
+    mode: str,
+    folder: str = "Processed",
+) -> str:
+    """Remove or archive a message. Returns the action taken: delete|move|seen."""
+    normalized = (mode or "delete").lower()
+    if normalized == "move":
+        try:
+            client.create(folder)
+        except imaplib.IMAP4.error:
+            pass
+        typ, _ = client.uid("COPY", uid, folder)
+        if typ == "OK":
+            client.uid("STORE", uid, "+FLAGS", "(\\Deleted)")
+            client.expunge()
+            return "move"
+        LOG.warning("Move to %s failed for UID %s; falling back to delete", folder, uid)
+        normalized = "delete"
+    if normalized == "seen":
+        client.uid("STORE", uid, "+FLAGS", "(\\Seen)")
+        return "seen"
+    # default: delete
+    client.uid("STORE", uid, "+FLAGS", "(\\Deleted)")
+    client.expunge()
+    return "delete"
+
+
 class ImapWorker:
     """Poll IMAP for unread mail, extract allowed attachments into the queue."""
 
@@ -35,12 +65,13 @@ class ImapWorker:
         self._thread = threading.Thread(target=self._loop, name="imap-poller", daemon=True)
         self._thread.start()
         LOG.info(
-            "IMAP poller started (%s@%s:%s folder=%s every %ss)",
+            "IMAP poller started (%s@%s:%s folder=%s every %ss post=%s)",
             self.settings.imap_user,
             self.settings.imap_host,
             self.settings.imap_port,
             self.settings.imap_folder,
             self.settings.poll_seconds,
+            self.settings.post_process,
         )
 
     def stop(self) -> None:
@@ -98,6 +129,19 @@ class ImapWorker:
                 pass
         return added
 
+    def _discard(self, client: imaplib.IMAP4, uid: str, reason: str) -> None:
+        action = dispose_uid(client, uid, mode="delete")
+        LOG.info("UID %s: %s → %s", uid, reason, action)
+
+    def _finish(self, client: imaplib.IMAP4, uid: str) -> None:
+        action = dispose_uid(
+            client,
+            uid,
+            mode=self.settings.post_process,
+            folder=self.settings.processed_folder,
+        )
+        LOG.info("UID %s: post-process → %s", uid, action)
+
     def _process_uid(self, client: imaplib.IMAP4, uid: str) -> int:
         typ, data = client.uid("FETCH", uid, "(RFC822)")
         if typ != "OK" or not data or not isinstance(data[0], tuple):
@@ -121,20 +165,17 @@ class ImapWorker:
             domain=self.settings.mail_domain,
         )
         if not mail_local:
-            LOG.info("UID %s: no matching plus-alias recipient; skipping", uid)
-            self._mark_processed(client, uid)
+            self._discard(client, uid, "no matching plus-alias recipient")
             return 0
 
         user_id = self.store.user_id_for_mail_local(mail_local)
         if user_id is None:
-            LOG.info("UID %s: unknown mail_local %s; skipping", uid, mail_local)
-            self._mark_processed(client, uid)
+            self._discard(client, uid, f"unknown mail_local {mail_local}")
             return 0
 
         attachments = extract_attachments(bytes(raw))
         if not attachments:
-            LOG.info("UID %s: no allowed attachments; marking processed", uid)
-            self._mark_processed(client, uid)
+            self._discard(client, uid, "no allowed attachments")
             return 0
 
         received_at = None
@@ -169,23 +210,8 @@ class ImapWorker:
             )
             stored += 1
 
-        self._mark_processed(client, uid)
+        self._finish(client, uid)
         return stored
-
-    def _mark_processed(self, client: imaplib.IMAP4, uid: str) -> None:
-        mode = (self.settings.post_process or "seen").lower()
-        if mode == "move":
-            try:
-                client.create(self.settings.processed_folder)
-            except imaplib.IMAP4.error:
-                pass
-            typ, _ = client.uid("COPY", uid, self.settings.processed_folder)
-            if typ == "OK":
-                client.uid("STORE", uid, "+FLAGS", "(\\Deleted)")
-                client.expunge()
-                return
-            LOG.warning("Move to %s failed for UID %s; falling back to \\Seen", self.settings.processed_folder, uid)
-        client.uid("STORE", uid, "+FLAGS", "(\\Seen)")
 
 
 def make_on_demand_poll(worker: ImapWorker) -> Callable[[], None]:

@@ -1,13 +1,68 @@
 from __future__ import annotations
 
+import sqlite3
+import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from app.store import ItemStore
+from app.store import ItemStore, hash_device_token
 
 
 def _iso_days_ago(days: int) -> str:
     return (datetime.now(timezone.utc) - timedelta(days=days)).replace(microsecond=0).isoformat()
+
+
+def test_migration_backfills_last_seen_from_created_at(tmp_path: Path) -> None:
+    db_path = tmp_path / "legacy.sqlite3"
+    items_dir = tmp_path / "items"
+    items_dir.mkdir()
+    token = "9" * 64
+    user_id = uuid.uuid4().hex
+    device_id = uuid.uuid4().hex
+    created_at = _iso_days_ago(60)
+    conn = sqlite3.connect(db_path)
+    conn.execute(
+        """
+        CREATE TABLE users (
+            id TEXT PRIMARY KEY,
+            mail_local TEXT NOT NULL UNIQUE,
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE devices (
+            id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL,
+            token_hash TEXT NOT NULL UNIQUE,
+            label TEXT,
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        "INSERT INTO users (id, mail_local, created_at) VALUES (?, ?, ?)",
+        (user_id, "legacylocal", created_at),
+    )
+    conn.execute(
+        """
+        INSERT INTO devices (id, user_id, token_hash, label, created_at)
+        VALUES (?, ?, ?, NULL, ?)
+        """,
+        (device_id, user_id, hash_device_token(token), created_at),
+    )
+    conn.commit()
+    conn.close()
+
+    store = ItemStore(db_path, items_dir)
+    assert store.purge_unused_accounts(older_than_days=7) == 0
+    assert store.user_id_for_token(token) == user_id
+    with store._conn() as migrated:
+        row = migrated.execute(
+            "SELECT last_seen_at FROM devices WHERE user_id = ?", (user_id,)
+        ).fetchone()
+    assert row["last_seen_at"] == created_at
 
 
 def test_touch_device_sets_last_seen(tmp_path: Path) -> None:

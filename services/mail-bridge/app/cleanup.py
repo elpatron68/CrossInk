@@ -73,7 +73,10 @@ class OrphanCleanupWorker:
 
     def _loop(self) -> None:
         # Run once shortly after start, then on the interval.
-        self.run_once()
+        try:
+            self.run_once()
+        except Exception:
+            LOG.exception("Orphan cleanup failed")
         while not self._stop.wait(max(60, self.settings.orphan_cleanup_seconds)):
             try:
                 self.run_once()
