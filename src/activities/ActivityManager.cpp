@@ -32,6 +32,7 @@
 #include "home/RecentBookProgress.h"
 #include "library/LibraryActivity.h"
 #include "network/CrossPointWebServerActivity.h"
+#include "network/EmailSyncActivity.h"
 #include "network/NearbyBookTransferActivity.h"
 #include "network/NearbyStatsSyncActivity.h"
 #include "network/UsbDriveActivity.h"
@@ -933,6 +934,22 @@ bool ActivityManager::resumeFileTransferFromNetworkBoot(const uint32_t payload) 
 void ActivityManager::goToNearbyStatsSync() {
   if (!SETTINGS.shouldTrackReadingStats()) return;
   replaceActivity(std::make_unique<NearbyStatsSyncActivity>(renderer, mappedInput));
+}
+
+bool ActivityManager::goToEmailSync(const bool networkBootReady) {
+#ifndef SIMULATOR
+  if (!networkBootReady) {
+    silentRestartToNetwork(NetworkBootTarget::EMAIL_SYNC);
+    return true;
+  }
+#endif
+  auto activity = makeUniqueNoThrow<EmailSyncActivity>(renderer, mappedInput, true);
+  if (!activity) {
+    LOG_ERR("ACT", "OOM: EmailSync activity (free=%u maxAlloc=%u)", ESP.getFreeHeap(), ESP.getMaxAllocHeap());
+    return false;
+  }
+  replaceActivity(std::move(activity));
+  return true;
 }
 
 void ActivityManager::goToSettings(const bool dismissOnUpSwipe) {

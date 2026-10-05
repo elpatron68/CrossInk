@@ -322,6 +322,29 @@ const std::vector<SettingInfo>& getBaseSettingsList() {
         },
         "koSyncBehavior", StrId::STR_KOREADER_SYNC));
 
+    // --- Email Sync (web-only, uses EmailSyncCredentialStore) ---
+    add(SettingInfo::DynamicString(
+        StrId::STR_EMAIL_SYNC_BASE_URL, [] { return EMAIL_SYNC_STORE.getBaseUrlRaw(); },
+        [](const std::string& v) {
+          EMAIL_SYNC_STORE.setBaseUrl(v);
+          EMAIL_SYNC_STORE.saveToFile();
+        },
+        "emailBaseUrl", StrId::STR_EMAIL_SYNC));
+    add(SettingInfo::DynamicString(
+        StrId::STR_EMAIL_SYNC_TOKEN, [] { return EMAIL_SYNC_STORE.getToken(); },
+        [](const std::string& v) {
+          EMAIL_SYNC_STORE.setToken(v);
+          EMAIL_SYNC_STORE.saveToFile();
+        },
+        "emailToken", StrId::STR_EMAIL_SYNC));
+    add(SettingInfo::DynamicString(
+        StrId::STR_EMAIL_SYNC_FOLDER, [] { return EMAIL_SYNC_STORE.getDownloadFolder(); },
+        [](const std::string& v) {
+          EMAIL_SYNC_STORE.setDownloadFolder(v);
+          EMAIL_SYNC_STORE.saveToFile();
+        },
+        "emailDownloadFolder", StrId::STR_EMAIL_SYNC));
+
     // Legacy fields stay in JSON for one-time status bar migration; the web
     // editor uses /api/status-bars instead of exposing these controls.
     add(SettingInfo::Toggle(StrId::STR_CHAPTER_PAGE_COUNT, &CrossPointSettings::statusBarChapterPageCount,

@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CrossInk Mail Bridge</title>
+  <!-- PLAUSIBLE -->
+  <style>
+    :root {
+      --bg: #f4f1ea;
+      --ink: #1a1a1a;
+      --muted: #5a5a5a;
+      --accent: #2c5f4a;
+      --card: #fffdf8;
+      --border: #d8d2c4;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+      color: var(--ink);
+      background:
+        radial-gradient(ellipse at top, #fff8e8 0%, transparent 55%),
+        linear-gradient(160deg, #ebe4d6 0%, var(--bg) 45%, #e2ddd2 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1rem;
+    }
+    main {
+      width: min(32rem, 100%);
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 2rem 1.75rem;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.06);
+    }
+    h1 {
+      margin: 0 0 0.35rem;
+      font-size: 1.75rem;
+      letter-spacing: -0.02em;
+    }
+    .lede {
+      margin: 0 0 1.5rem;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+    button {
+      appearance: none;
+      border: none;
+      background: var(--accent);
+      color: #fff;
+      font: inherit;
+      font-size: 1.05rem;
+      padding: 0.85rem 1.25rem;
+      border-radius: 8px;
+      cursor: pointer;
+      width: 100%;
+    }
+    button:disabled { opacity: 0.55; cursor: wait; }
+    button.secondary {
+      background: transparent;
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      width: auto;
+      padding: 0.35rem 0.7rem;
+      font-size: 0.9rem;
+    }
+    .error {
+      margin-top: 1rem;
+      color: #8b1e1e;
+      display: none;
+    }
+    .result { display: none; margin-top: 1.5rem; }
+    .result.visible, .error.visible { display: block; }
+    .field {
+      margin: 0 0 1rem;
+      padding: 0.85rem 1rem;
+      background: #f7f3ea;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+    .field label {
+      display: block;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+      margin-bottom: 0.35rem;
+    }
+    .row {
+      display: flex;
+      gap: 0.5rem;
+      align-items: flex-start;
+    }
+    .value {
+      flex: 1;
+      word-break: break-all;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.92rem;
+      line-height: 1.4;
+    }
+    .warn {
+      margin-top: 1rem;
+      padding: 0.75rem 0.9rem;
+      background: #fff3d6;
+      border-radius: 8px;
+      color: #5c4510;
+      font-size: 0.95rem;
+      line-height: 1.4;
+    }
+    .hint { margin-top: 1.25rem; color: var(--muted); font-size: 0.95rem; line-height: 1.4; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1 data-i18n="title">CrossInk Mail Bridge</h1>
+    <p class="lede" data-i18n-html="lede"></p>
+
+    <button id="createBtn" type="button" data-i18n="createBtn">Create account</button>
+    <p class="hint" style="margin-top:0.85rem" data-i18n="multiDevice"></p>
+    <p class="hint" data-i18n="retention"></p>
+    <p id="error" class="error" role="alert"></p>
+
+    <section id="result" class="result" aria-live="polite">
+      <div class="field">
+        <label data-i18n="labelEmail">Email alias</label>
+        <div class="row">
+          <div class="value" id="emailValue"></div>
+          <button class="secondary" type="button" data-copy="emailValue" data-i18n="copy">Copy</button>
+        </div>
+      </div>
+      <div class="field">
+        <label data-i18n="labelToken">Device token</label>
+        <div class="row">
+          <div class="value" id="tokenValue"></div>
+          <button class="secondary" type="button" data-copy="tokenValue" data-i18n="copy">Copy</button>
+        </div>
+      </div>
+      <div class="field">
+        <label data-i18n="labelUrl">Bridge URL</label>
+        <div class="row">
+          <div class="value" id="urlValue"></div>
+          <button class="secondary" type="button" data-copy="urlValue" data-i18n="copy">Copy</button>
+        </div>
+      </div>
+      <p class="warn" data-i18n-html="warn"></p>
+      <p class="hint" data-i18n="hint"></p>
+    </section>
+  </main>
+  <script>
+    const STRINGS = {
+      en: {
+        title: "CrossInk Mail Bridge",
+        lede: "Create an account to get a private email alias and a device token. Send <code>.epub</code> / <code>.txt</code> books to the alias, then sync on your reader.",
+        createBtn: "Create account",
+        createdBtn: "Account created",
+        multiDevice: "Multiple readers? Create a separate account (alias + token) for each device — one alias maps to one inbox queue.",
+        labelEmail: "Email alias",
+        labelToken: "Device token",
+        labelUrl: "Bridge URL",
+        copy: "Copy",
+        copied: "Copied",
+        copyFailed: "Failed",
+        warn: "<strong>Important:</strong> This screen is shown only once. Save the Bridge URL, email alias, and device token in a safe place — the server cannot show them again. Share the email alias only with people you trust (anyone who can send to it can queue books for your reader).",
+        hint: "On the reader: Settings → Email Sync → Bridge URL + Device Token. Extra devices need their own account (new alias), not a shared token.",
+        errorGeneric: "Something went wrong.",
+        retention:
+          "Accounts that never sync are removed after 7 days. Accounts with no sync and no mail for 365 days are removed.",
+        errorRateLimit: "Too many accounts from this network. Try again in an hour.",
+      },
+      de: {
+        title: "CrossInk Mail Bridge",
+        lede: "Lege einen Account an, um einen privaten E-Mail-Alias und ein Gerätetoken zu erhalten. Sende <code>.epub</code>- / <code>.txt</code>-Bücher an den Alias und synchronisiere danach auf dem Reader.",
+        createBtn: "Account anlegen",
+        createdBtn: "Account angelegt",
+        multiDevice: "Mehrere Reader? Für jedes Gerät einen eigenen Account (Alias + Token) anlegen — ein Alias gehört zu einer Warteschlange.",
+        labelEmail: "E-Mail-Alias",
+        labelToken: "Gerätetoken",
+        labelUrl: "Bridge-URL",
+        copy: "Kopieren",
+        copied: "Kopiert",
+        copyFailed: "Fehler",
+        warn: "<strong>Wichtig:</strong> Diese Angaben werden nur einmal angezeigt. Bridge-URL, E-Mail-Alias und Gerätetoken unbedingt an einem sicheren Ort speichern — der Server kann sie nicht erneut anzeigen. Den E-Mail-Alias nur an vertrauenswürdige Personen weitergeben (jeder Absender kann Bücher in deine Warteschlange legen).",
+        hint: "Am Reader: Einstellungen → E-Mail-Sync → Bridge-URL + Gerätetoken. Weitere Geräte brauchen einen eigenen Account (neuen Alias), kein gemeinsames Token.",
+        errorGeneric: "Etwas ist schiefgelaufen.",
+        retention:
+          "Accounts ohne Sync werden nach 7 Tagen gelöscht. Accounts ohne Sync und ohne Mail seit 365 Tagen ebenfalls.",
+        errorRateLimit: "Zu viele Accounts aus diesem Netzwerk. Bitte in einer Stunde erneut versuchen.",
+      },
+    };
+
+    function detectLocale() {
+      const candidates = [
+        ...(navigator.languages || []),
+        navigator.language,
+        navigator.userLanguage,
+      ].filter(Boolean);
+      for (const raw of candidates) {
+        const lang = String(raw).toLowerCase().split("-")[0];
+        if (lang === "de") return "de";
+        if (lang === "en") return "en";
+      }
+      return "en";
+    }
+
+    const locale = detectLocale();
+    const t = STRINGS[locale] || STRINGS.en;
+    document.documentElement.lang = locale;
+
+    function applyI18n() {
+      document.querySelectorAll("[data-i18n]").forEach((el) => {
+        const key = el.getAttribute("data-i18n");
+        if (t[key] != null) el.textContent = t[key];
+      });
+      document.querySelectorAll("[data-i18n-html]").forEach((el) => {
+        const key = el.getAttribute("data-i18n-html");
+        if (t[key] != null) el.innerHTML = t[key];
+      });
+      document.title = t.title;
+    }
+
+    applyI18n();
+
+    function randomTokenHex() {
+      const bytes = new Uint8Array(32);
+      crypto.getRandomValues(bytes);
+      return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+    }
+
+    const createBtn = document.getElementById("createBtn");
+    const errorEl = document.getElementById("error");
+    const resultEl = document.getElementById("result");
+
+    async function copyText(text) {
+      if (window.isSecureContext && navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+        return;
+      }
+      // HTTP / non-secure contexts: Clipboard API is unavailable.
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "fixed";
+      ta.style.top = "-9999px";
+      ta.style.left = "-9999px";
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      ta.setSelectionRange(0, ta.value.length);
+      const ok = document.execCommand("copy");
+      document.body.removeChild(ta);
+      if (!ok) throw new Error("copy failed");
+    }
+
+    document.querySelectorAll("[data-copy]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-copy");
+        const text = document.getElementById(id).textContent;
+        try {
+          await copyText(text);
+          btn.textContent = t.copied;
+          setTimeout(() => { btn.textContent = t.copy; }, 1200);
+        } catch (_) {
+          btn.textContent = t.copyFailed;
+          setTimeout(() => { btn.textContent = t.copy; }, 1200);
+        }
+      });
+    });
+
+    createBtn.addEventListener("click", async () => {
+      errorEl.classList.remove("visible");
+      errorEl.textContent = "";
+      createBtn.disabled = true;
+      const token = randomTokenHex();
+      try {
+        const res = await fetch("/v1/accounts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ device_token: token }),
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          if (res.status === 429) {
+            throw new Error(t.errorRateLimit);
+          }
+          const detail = body.detail;
+          throw new Error(typeof detail === "string" ? detail : (t.errorGeneric + " (HTTP " + res.status + ")"));
+        }
+        document.getElementById("emailValue").textContent = body.email;
+        document.getElementById("tokenValue").textContent = token;
+        document.getElementById("urlValue").textContent = window.location.origin;
+        resultEl.classList.add("visible");
+        createBtn.textContent = t.createdBtn;
+      } catch (err) {
+        errorEl.textContent = String(err.message || err);
+        errorEl.classList.add("visible");
+        createBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

@@ -40,6 +40,13 @@ Refer to https://freeink.org/llms.txt for guidance.
 - SD-font section builds cost ~38-50KB at cold start; the 4-style advance-table prewarm
   (~30KB incl. 16KB contiguous scratch) dominates and is skipped below 80KB free.
 
+## Build / PlatformIO
+
+- Use **pioarduino platformio-core 6.1.19** (same pin as CI), not stock PlatformIO 6.2 from PyPI.
+  Stock 6.2 can break on `tool-scons` / `SCons.Tool.FortranCommon` with this platform.
+- Local WSL helper: `source scripts/pio-env.sh` (repo venv `.pio-venv` + `PLATFORMIO_CORE_DIR=.platformio-core`).
+- Submodules must be initialized (`freeink-sdk`, `assets/tabler-icons`) or the build cannot resolve HAL/libs.
+
 ## Misc Repo Gotchas
 
 - POSIX TZ signs are inverted from ISO 8601 in `TimeStore::applyTimezone()`: `"UTC-1"` means UTC+1.

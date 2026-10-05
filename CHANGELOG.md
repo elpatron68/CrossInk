@@ -1,3 +1,19 @@
+## [Unreleased]
+
+### Added
+
+- Email Sync: download `.epub` and `.txt` books from a self-hosted mail bridge (IMAP ingest + one-tap HTTPS pull). Configure bridge URL and device token under Settings → Email Sync (on-device or the device web portal), or start from File Transfer / a shortcut.
+- Mail bridge multi-tenant pairing: open web UI creates a plus-alias inbox (`bookbridge+…@domain` by default) and a browser-generated device token; IMAP routes attachments per account.
+- Mail bridge cleanup: delete processed IMAP mail (and unknown-alias mail), purge undownloaded queue items after a configurable retention window, and remove blobs on device ack.
+- Email Sync uses a mail envelope icon in the File Transfer network menu.
+- Mail bridge pairing page notes that each additional reader needs its own alias/account, and can optionally load Plausible Analytics via `PLAUSIBLE_DOMAIN`.
+- Mail bridge: delete never-synced accounts after 7 days and inactive accounts after 365 days; rate-limit account creation per IP (proxy-aware).
+- Mail bridge Docker image: non-root container, healthcheck, `./start-docker.sh` for WSL Compose bring-up.
+
+### Fixed
+
+- Mail bridge: sanitize attachment filenames that contain CR/LF from MIME header folding so device downloads no longer fail with “Download failed”.
+
 ## [v1.6.1] - 2026-10-03
 
 ### Added

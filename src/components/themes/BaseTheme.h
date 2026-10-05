@@ -170,6 +170,7 @@ enum UIIcon {
   Opds,
   Wifi,
   Hotspot,
+  Mail,
   Chart
 };
 

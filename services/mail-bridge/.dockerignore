@@ -1,0 +1,15 @@
+.venv/
+data/
+.env
+.git/
+.gitignore
+__pycache__/
+*.pyc
+.pytest_cache/
+tests/
+*.md
+Dockerfile
+docker-compose.yml
+.dockerignore
+start-local.sh
+start-docker.sh
