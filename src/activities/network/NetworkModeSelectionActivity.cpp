@@ -29,8 +29,8 @@ constexpr StrId menuDescs[] = {StrId::STR_JOIN_DESC,         StrId::STR_CALIBRE_
                                StrId::STR_HOTSPOT_DESC,      StrId::STR_USB_DRIVE_DESC,
                                StrId::STR_EMAIL_SYNC_DESC,   StrId::STR_RECEIVE_NEARBY_BOOK_DESC,
                                StrId::STR_NEARBY_STATS_SYNC_DESC};
-constexpr UIIcon menuIcons[] = {UIIcon::Wifi,     UIIcon::Library,  UIIcon::Hotspot,  UIIcon::Transfer,
-                                UIIcon::Transfer, UIIcon::Transfer, UIIcon::Transfer};
+constexpr UIIcon menuIcons[] = {UIIcon::Wifi, UIIcon::Library, UIIcon::Hotspot, UIIcon::Transfer,
+                                UIIcon::Mail,  UIIcon::Transfer, UIIcon::Transfer};
 #else
 constexpr NetworkMode menuModes[] = {NetworkMode::JOIN_NETWORK, NetworkMode::CONNECT_CALIBRE,
                                      NetworkMode::CREATE_HOTSPOT, NetworkMode::EMAIL_SYNC,
@@ -40,7 +40,7 @@ constexpr StrId menuItems[] = {StrId::STR_JOIN_NETWORK, StrId::STR_CALIBRE_WIREL
 constexpr StrId menuDescs[] = {StrId::STR_JOIN_DESC, StrId::STR_CALIBRE_DESC, StrId::STR_HOTSPOT_DESC,
                                StrId::STR_EMAIL_SYNC_DESC, StrId::STR_RECEIVE_NEARBY_BOOK_DESC,
                                StrId::STR_NEARBY_STATS_SYNC_DESC};
-constexpr UIIcon menuIcons[] = {UIIcon::Wifi, UIIcon::Library, UIIcon::Hotspot, UIIcon::Transfer, UIIcon::Transfer,
+constexpr UIIcon menuIcons[] = {UIIcon::Wifi, UIIcon::Library, UIIcon::Hotspot, UIIcon::Mail, UIIcon::Transfer,
                                 UIIcon::Transfer};
 #endif
 
