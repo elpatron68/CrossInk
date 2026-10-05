@@ -164,6 +164,13 @@ def create_app(settings: Settings | None = None, store: ItemStore | None = None)
             html = html.replace("<!-- PLAUSIBLE -->", snippet, 1)
         return HTMLResponse(html)
 
+    @app.get("/favicon.ico", include_in_schema=False)
+    def favicon() -> FileResponse:
+        path = STATIC_DIR / "favicon.svg"
+        if not path.is_file():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Favicon missing")
+        return FileResponse(path, media_type="image/svg+xml")
+
     if STATIC_DIR.is_dir():
         app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
