@@ -67,3 +67,5 @@ release.md
 # (worktrees, scheduled-task locks, settings.local, scout CLEANUP.md) out.
 .claude/*
 !.claude/skills/
+
+.todo.md
