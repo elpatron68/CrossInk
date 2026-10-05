@@ -9,14 +9,15 @@ from starlette.requests import Request
 
 def client_ip(request: Request, *, trust_proxy: bool) -> str:
     if trust_proxy:
-        real_ip = (request.headers.get("x-real-ip") or "").strip()
-        if real_ip:
-            return real_ip
+        # Spec order: leftmost X-Forwarded-For, then X-Real-IP, then peer.
         xff = request.headers.get("x-forwarded-for")
         if xff:
             first = xff.split(",")[0].strip()
             if first:
                 return first
+        real_ip = (request.headers.get("x-real-ip") or "").strip()
+        if real_ip:
+            return real_ip
     if request.client and request.client.host:
         return request.client.host
     return "unknown"
