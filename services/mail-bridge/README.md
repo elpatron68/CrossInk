@@ -2,85 +2,73 @@
 
 HTTP bridge that turns emailed book attachments into a device-friendly download queue.
 
-CrossInk never talks IMAP. The bridge polls a mailbox, extracts `.epub` / `.txt`
-attachments, and exposes them over a small Bearer-token API.
-
-Firmware side: Settings → Email Sync (on-device or device web portal) stores
-bridge URL + device token; Network → Email Sync pulls pending books to
-`/Books/Email/` by default.
+CrossInk never talks IMAP. The bridge polls a catch-all mailbox, routes mail by
+plus-alias to the matching account, extracts `.epub` / `.txt` attachments, and
+exposes them over a Bearer-token API.
 
 ## Quick start
 
 ```bash
 cd services/mail-bridge
 cp .env.example .env
-# Edit DEVICE_TOKEN, IMAP_* …
+# Edit MAIL_* and IMAP_* …
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+./start-local.sh
+```
+
+Open `http://localhost:8080/` → **Create account**. The browser generates the
+device token; copy the email alias + token into the reader
+(Settings → Email Sync).
+
+Docker:
+
+```bash
 docker compose up --build -d
 curl -s http://localhost:8080/v1/health
 ```
 
-Generate a device token (Phase 1):
-
-```bash
-openssl rand -hex 32
-```
-
-Put the same value in `.env` as `DEVICE_TOKEN` and in the reader’s Email Sync settings.
-
-### Local without Docker
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env
-./start-local.sh
-# or: uvicorn app.main:app --host 0.0.0.0 --port 8080
-```
-
-On WSL2, the X3/X4 on the LAN typically needs a Windows `netsh interface portproxy`
-from the host LAN IP `:8080` to the WSL IP `:8080`, and the device Bridge URL should
-use that Windows LAN address (not the WSL-only IP).
+On WSL2, devices on the LAN typically need a Windows `netsh interface portproxy`
+from the host LAN IP `:8080` to the WSL IP `:8080`. Use that Windows LAN address
+as the Bridge URL on the reader.
 
 ## API
 
-Auth for all routes except health: `Authorization: Bearer <DEVICE_TOKEN>`.
+| Method | Path | Auth | Purpose |
+| --- | --- | --- | --- |
+| `GET` | `/` | no | Pairing web UI |
+| `GET` | `/v1/health` | no | Liveness |
+| `POST` | `/v1/accounts` | no | Create account (`device_token` from browser) |
+| `GET` | `/v1/pending` | Bearer | List pending items (triggers IMAP poll) |
+| `GET` | `/v1/items/{id}/content` | Bearer | Stream attachment bytes |
+| `POST` | `/v1/items/{id}/ack` | Bearer | Mark delivered (idempotent) |
 
-| Method | Path | Purpose |
-| --- | --- | --- |
-| `GET` | `/v1/health` | Liveness (no auth) |
-| `GET` | `/v1/pending` | List pending items (triggers IMAP poll) |
-| `GET` | `/v1/items/{id}/content` | Stream attachment bytes |
-| `POST` | `/v1/items/{id}/ack` | Mark delivered (idempotent) |
+`POST /v1/accounts` body:
 
-Pending item shape:
+```json
+{ "device_token": "<64 lowercase hex chars>" }
+```
+
+Response (201) — token is never echoed:
 
 ```json
 {
-  "id": "…",
-  "filename": "book.epub",
-  "bytes": 12345,
-  "sha256": "…",
-  "content_type": "application/epub+zip",
-  "received_at": "2026-10-05T19:00:00+00:00"
+  "user_id": "…",
+  "mail_local": "a7f3c2d91e",
+  "email": "bookbridge+a7f3c2d91e@hoerdle.de"
 }
 ```
 
-Attachment filenames are sanitized on ingest (CR/LF from MIME header folding,
-path components, FAT-illegal characters) so `Content-Disposition` stays a valid
-HTTP header and the device can write the file to SD.
+Alias form: `{MAIL_LOCAL_PREFIX}+{mail_local}@{MAIL_DOMAIN}`.
 
 ### curl smoke
 
 ```bash
-TOKEN=your-device-token
+TOKEN=$(openssl rand -hex 32)
 BASE=http://localhost:8080
 
-curl -s "$BASE/v1/health"
-curl -s -H "Authorization: Bearer $TOKEN" "$BASE/v1/pending"
-# Pick an id from pending, then:
-curl -s -H "Authorization: Bearer $TOKEN" -o book.epub "$BASE/v1/items/$ID/content"
-curl -s -X POST -H "Authorization: Bearer $TOKEN" "$BASE/v1/items/$ID/ack"
+curl -s -X POST "$BASE/v1/accounts" -H 'Content-Type: application/json' \
+  -d "{\"device_token\":\"$TOKEN\"}"
 curl -s -H "Authorization: Bearer $TOKEN" "$BASE/v1/pending"
 ```
 
@@ -93,10 +81,6 @@ pytest -q
 
 ## Phase notes
 
-- **P1 (current):** single shared IMAP mailbox + one `DEVICE_TOKEN` from `.env`.
-- **P2 (designed, not implemented):** open one-click pairing web UI, hashed
-  per-device tokens, plus-alias routing
-  (`{MAIL_LOCAL_PREFIX}+{mail_local}@{MAIL_DOMAIN}`, e.g. `bookbridge+…@hoerdle.de`).
-  Spec: [`docs/superpowers/specs/2026-10-05-email-bridge-phase2-design.md`](../../docs/superpowers/specs/2026-10-05-email-bridge-phase2-design.md).
-  P2 removes `DEVICE_TOKEN` env auth (no P1 compatibility).
+- **P2 (current):** open one-click pairing, hashed device tokens, plus-alias IMAP routing.
+  Design: [`docs/superpowers/specs/2026-10-05-email-bridge-phase2-design.md`](../../docs/superpowers/specs/2026-10-05-email-bridge-phase2-design.md).
 - **P3:** optional SMTP ingest into the same queue.

@@ -3,6 +3,7 @@
 ### Added
 
 - Email Sync: download `.epub` and `.txt` books from a self-hosted mail bridge (IMAP ingest + one-tap HTTPS pull). Configure bridge URL and device token under Settings → Email Sync (on-device or the device web portal), or start from File Transfer / a shortcut.
+- Mail bridge multi-tenant pairing: open web UI creates a plus-alias inbox (`bookbridge+…@domain` by default) and a browser-generated device token; IMAP routes attachments per account.
 
 ### Fixed
 

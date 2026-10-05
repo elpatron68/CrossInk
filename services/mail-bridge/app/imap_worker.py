@@ -3,12 +3,13 @@ from __future__ import annotations
 import imaplib
 import logging
 import threading
-import time
+from email import message_from_bytes
 from email.utils import parsedate_to_datetime
 from typing import Callable
 
 from .config import Settings
 from .mime_extract import extract_attachments
+from .recipients import resolve_user_mail_local
 from .store import ItemStore
 
 LOG = logging.getLogger("mail-bridge.imap")
@@ -108,6 +109,28 @@ class ImapWorker:
             LOG.error("Unexpected FETCH payload for UID %s", uid)
             return 0
 
+        msg = message_from_bytes(bytes(raw))
+        mail_local = resolve_user_mail_local(
+            {
+                "Delivered-To": msg.get("Delivered-To"),
+                "X-Original-To": msg.get("X-Original-To"),
+                "To": msg.get("To"),
+                "Cc": msg.get("Cc"),
+            },
+            prefix=self.settings.mail_local_prefix,
+            domain=self.settings.mail_domain,
+        )
+        if not mail_local:
+            LOG.info("UID %s: no matching plus-alias recipient; skipping", uid)
+            self._mark_processed(client, uid)
+            return 0
+
+        user_id = self.store.user_id_for_mail_local(mail_local)
+        if user_id is None:
+            LOG.info("UID %s: unknown mail_local %s; skipping", uid, mail_local)
+            self._mark_processed(client, uid)
+            return 0
+
         attachments = extract_attachments(bytes(raw))
         if not attachments:
             LOG.info("UID %s: no allowed attachments; marking processed", uid)
@@ -116,11 +139,6 @@ class ImapWorker:
 
         received_at = None
         try:
-            # Best-effort Date header via a second lightweight parse is unnecessary;
-            # mime_extract already parsed. Re-parse Date only if present in raw.
-            from email import message_from_bytes
-
-            msg = message_from_bytes(bytes(raw))
             date_hdr = msg.get("Date")
             if date_hdr:
                 received_at = parsedate_to_datetime(date_hdr).astimezone().replace(microsecond=0).isoformat()
@@ -139,8 +157,16 @@ class ImapWorker:
                 content_type=att.content_type,
                 imap_uid=uid,
                 received_at=received_at,
+                user_id=user_id,
             )
-            LOG.info("UID %s: queued %s as %s (%d bytes)", uid, att.filename, item.id, item.bytes)
+            LOG.info(
+                "UID %s: queued %s as %s for user %s (%d bytes)",
+                uid,
+                att.filename,
+                item.id,
+                user_id[:8],
+                item.bytes,
+            )
             stored += 1
 
         self._mark_processed(client, uid)

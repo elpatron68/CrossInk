@@ -7,7 +7,8 @@ from typing import AsyncIterator
 
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.responses import FileResponse, JSONResponse
-from pydantic import BaseModel
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, Field
 
 from . import __version__
 from .auth import require_device_token
@@ -17,6 +18,8 @@ from .mime_extract import safe_filename
 from .store import ItemStore
 
 LOG = logging.getLogger("mail-bridge")
+
+STATIC_DIR = Path(__file__).resolve().parent / "static"
 
 
 class PendingItemOut(BaseModel):
@@ -34,9 +37,25 @@ class HealthOut(BaseModel):
     imap_configured: bool
 
 
+class CreateAccountIn(BaseModel):
+    device_token: str = Field(min_length=64, max_length=64)
+
+
+class CreateAccountOut(BaseModel):
+    user_id: str
+    mail_local: str
+    email: str
+
+
 def create_app(settings: Settings | None = None, store: ItemStore | None = None) -> FastAPI:
     settings = settings or get_settings()
-    store = store or ItemStore(settings.db_path, settings.items_dir)
+    store = store or ItemStore(
+        settings.db_path,
+        settings.items_dir,
+        mail_local_prefix=settings.mail_local_prefix,
+        mail_domain=settings.mail_domain,
+        mail_local_length=settings.mail_local_length,
+    )
     worker = ImapWorker(settings, store)
 
     @asynccontextmanager
@@ -59,6 +78,17 @@ def create_app(settings: Settings | None = None, store: ItemStore | None = None)
             version=__version__,
             imap_configured=settings.imap_configured,
         )
+
+    @app.post("/v1/accounts", response_model=CreateAccountOut, status_code=status.HTTP_201_CREATED)
+    def create_account(body: CreateAccountIn) -> CreateAccountOut:
+        token = body.device_token.strip()
+        try:
+            created = store.create_account(token)
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        except LookupError as exc:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+        return CreateAccountOut(user_id=created.user_id, mail_local=created.mail_local, email=created.email)
 
     @app.get("/v1/pending", response_model=list[PendingItemOut])
     def pending(user_id: str = Depends(require_device_token)) -> list[PendingItemOut]:
@@ -101,6 +131,16 @@ def create_app(settings: Settings | None = None, store: ItemStore | None = None)
         if not store.ack(item_id, user_id=user_id):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not found")
         return JSONResponse({"ok": True, "id": item_id})
+
+    @app.get("/")
+    def pairing_page() -> FileResponse:
+        index = STATIC_DIR / "index.html"
+        if not index.is_file():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pairing UI missing")
+        return FileResponse(index)
+
+    if STATIC_DIR.is_dir():
+        app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
     return app
 

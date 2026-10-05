@@ -16,7 +16,10 @@ class Settings(BaseSettings):
     )
 
     data_dir: Path = Field(default=Path("./data"), validation_alias="DATA_DIR")
-    device_token: str = Field(default="change-me", validation_alias="DEVICE_TOKEN")
+
+    mail_local_prefix: str = Field(default="bookbridge", validation_alias="MAIL_LOCAL_PREFIX")
+    mail_domain: str = Field(default="hoerdle.de", validation_alias="MAIL_DOMAIN")
+    mail_local_length: int = Field(default=10, validation_alias="MAIL_LOCAL_LENGTH")
 
     imap_host: str = Field(default="", validation_alias="IMAP_HOST")
     imap_port: int = Field(default=993, validation_alias="IMAP_PORT")
@@ -44,6 +47,9 @@ class Settings(BaseSettings):
     @property
     def imap_configured(self) -> bool:
         return bool(self.imap_host and self.imap_user and self.imap_pass)
+
+    def format_alias_email(self, mail_local: str) -> str:
+        return f"{self.mail_local_prefix}+{mail_local}@{self.mail_domain}"
 
 
 @lru_cache
