@@ -160,6 +160,10 @@ Modes:
 - STA: join existing Wi-Fi network
 - AP: create hotspot
 - Calibre Wireless: STA flow specialized for Calibre plugin uploads
+- Email Sync: one-tap pull from a self-hosted mail bridge (`lib/EmailSync/`,
+  `EmailSyncActivity`); the bridge lives under `services/mail-bridge/` and owns
+  IMAP/MIME. Phase 2 multi-tenant pairing design:
+  `docs/superpowers/specs/2026-10-05-email-bridge-phase2-design.md`.
 
 Server behavior:
 

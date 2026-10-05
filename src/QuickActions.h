@@ -61,7 +61,7 @@ inline constexpr std::array<StrId, CrossPointSettings::QUICK_ACTION_SLOT_ACTION_
 
 // Shared display order for shortcut pickers. The values remain the persisted
 // SHORT_PWRBTN IDs; only their presentation order is centralized here.
-inline constexpr std::array<CrossPointSettings::SHORT_PWRBTN, 32> shortcutActionOrder = {
+inline constexpr std::array<CrossPointSettings::SHORT_PWRBTN, 33> shortcutActionOrder = {
     CrossPointSettings::IGNORE,
     CrossPointSettings::SLEEP,
     CrossPointSettings::PAGE_TURN,
@@ -79,6 +79,7 @@ inline constexpr std::array<CrossPointSettings::SHORT_PWRBTN, 32> shortcutAction
     CrossPointSettings::NEARBY_POSITION_SYNC,
     CrossPointSettings::LIBRARY,
     CrossPointSettings::FILE_TRANSFER,
+    CrossPointSettings::EMAIL_SYNC,
     CrossPointSettings::CALIBRE_WIRELESS,
     CrossPointSettings::JOIN_NETWORK,
     CrossPointSettings::CREATE_HOTSPOT,
@@ -101,7 +102,7 @@ inline bool supportsTiltPageTurn() { return halTiltSensor.isAvailable(); }
 inline bool isActionAvailable(const uint8_t action) {
   if (action == CrossPointSettings::READING_STATS && !SETTINGS.shouldTrackReadingStats()) return false;
   if (action == CrossPointSettings::PREVIOUS_PAGE || action == CrossPointSettings::NEARBY_POSITION_SYNC ||
-      action == CrossPointSettings::LIBRARY)
+      action == CrossPointSettings::LIBRARY || action == CrossPointSettings::EMAIL_SYNC)
     return true;
   if (action == CrossPointSettings::QUICK_ACTIONS || action == CrossPointSettings::QUICK_LOCK) return true;
   if (action == CrossPointSettings::TOGGLE_FRONTLIGHT) return Frontlight.present();
@@ -131,6 +132,7 @@ inline StrId actionLabel(const uint8_t action) {
   if (action == CrossPointSettings::PREVIOUS_PAGE) return StrId::STR_PREV_PAGE;
   if (action == CrossPointSettings::NEARBY_POSITION_SYNC) return StrId::STR_NEARBY_POSITION_SYNC;
   if (action == CrossPointSettings::LIBRARY) return StrId::STR_LIBRARY;
+  if (action == CrossPointSettings::EMAIL_SYNC) return StrId::STR_EMAIL_SYNC;
   if (action == CrossPointSettings::HOME_READER) return StrId::STR_HOME_READER;
   return StrId::STR_HOME_BUTTON_LOCK;
 }

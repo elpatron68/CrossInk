@@ -85,6 +85,7 @@ inline esp_sleep_wakeup_cause_t esp_sleep_get_wakeup_cause() { return ESP_SLEEP_
 #include "CrossPointState.h"
 #include "GlobalActions.h"
 #include "KOReaderCredentialStore.h"
+#include "EmailSyncCredentialStore.h"
 #include "MappedInputManager.h"
 #include "OpdsServerStore.h"
 #include "RecentBooksStore.h"
@@ -642,6 +643,11 @@ bool handleGlobalPowerButtonAction(const CrossPointSettings::SHORT_PWRBTN action
       }
       activityManager.goToFileTransfer();
       return true;
+    case CrossPointSettings::SHORT_PWRBTN::EMAIL_SYNC:
+      if (activityManager.canSnapshotForSleepOverlay()) {
+        return false;
+      }
+      return activityManager.goToEmailSync();
     case CrossPointSettings::SHORT_PWRBTN::CALIBRE_WIRELESS:
       if (activityManager.canSnapshotForSleepOverlay()) {
         return false;
@@ -1361,6 +1367,8 @@ void setup() {
              snapshotTarget == static_cast<uint32_t>(NetworkBootTarget::KOREADER_AUTH) ||
              snapshotTarget == static_cast<uint32_t>(NetworkBootTarget::FILE_TRANSFER)) {
     KOREADER_STORE.loadFromFile();
+  } else if (snapshotTarget == static_cast<uint32_t>(NetworkBootTarget::EMAIL_SYNC)) {
+    EMAIL_SYNC_STORE.loadFromFile();
   }
   UITheme::getInstance().reload();
   ButtonNavigator::setMappedInputManager(mappedInputManager);
@@ -1537,6 +1545,9 @@ void setup() {
       }
       case NetworkBootTarget::FILE_TRANSFER:
         launched = activityManager.resumeFileTransferFromNetworkBoot(snapshotPayload);
+        break;
+      case NetworkBootTarget::EMAIL_SYNC:
+        launched = activityManager.goToEmailSync(true);
         break;
       case NetworkBootTarget::MANAGE_FONTS: {
         auto fontsActivity = makeUniqueNoThrow<FontDownloadActivity>(renderer, mappedInputManager);

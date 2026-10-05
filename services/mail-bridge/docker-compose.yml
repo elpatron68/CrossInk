@@ -1,0 +1,15 @@
+services:
+  mail-bridge:
+    build: .
+    ports:
+      - "${PORT:-8080}:8080"
+    env_file:
+      - .env
+    environment:
+      DATA_DIR: /data
+    volumes:
+      - mail-bridge-data:/data
+    restart: unless-stopped
+
+volumes:
+  mail-bridge-data:

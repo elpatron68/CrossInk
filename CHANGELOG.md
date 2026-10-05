@@ -1,3 +1,13 @@
+## [Unreleased]
+
+### Added
+
+- Email Sync: download `.epub` and `.txt` books from a self-hosted mail bridge (IMAP ingest + one-tap HTTPS pull). Configure bridge URL and device token under Settings → Email Sync (on-device or the device web portal), or start from File Transfer / a shortcut.
+
+### Fixed
+
+- Mail bridge: sanitize attachment filenames that contain CR/LF from MIME header folding so device downloads no longer fail with “Download failed”.
+
 ## [v1.6.1] - 2026-10-03
 
 ### Added

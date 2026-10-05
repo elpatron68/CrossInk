@@ -50,7 +50,8 @@ let allSettings = [];
     }
 
     if (setting.type === 'string') {
-      const inputType = setting.name.toLowerCase().includes('password') ? 'password' : 'text';
+      const nameLower = setting.name.toLowerCase();
+      const inputType = (nameLower.includes('password') || nameLower.includes('token')) ? 'password' : 'text';
       const val = setting.value || '';
       return '<input type="' + inputType + '" id="' + id + '" value="' + escapeHtml(val) + '"' +
         ' oninput="handleSettingChanged(\'' + setting.key + '\')">';
