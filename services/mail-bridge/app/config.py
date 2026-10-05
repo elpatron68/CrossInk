@@ -29,9 +29,28 @@ class Settings(BaseSettings):
     imap_ssl: bool = Field(default=True, validation_alias="IMAP_SSL")
 
     poll_seconds: int = Field(default=60, validation_alias="POLL_SECONDS")
-    # seen = mark \\Seen; move = move to processed_folder after extract
-    post_process: str = Field(default="seen", validation_alias="POST_PROCESS")
+    # After a matched message is queued: delete | move | seen
+    post_process: str = Field(default="delete", validation_alias="POST_PROCESS")
     processed_folder: str = Field(default="Processed", validation_alias="PROCESSED_FOLDER")
+
+    # Pending items not downloaded after this many days are deleted (0 = disabled).
+    orphan_retention_days: int = Field(default=14, validation_alias="ORPHAN_RETENTION_DAYS")
+    # How often to scan for orphans (seconds).
+    orphan_cleanup_seconds: int = Field(default=3600, validation_alias="ORPHAN_CLEANUP_SECONDS")
+    # When true, ack also deletes the stored file (and the DB row).
+    delete_on_ack: bool = Field(default=True, validation_alias="DELETE_ON_ACK")
+
+    account_unused_days: int = Field(default=7, validation_alias="ACCOUNT_UNUSED_DAYS")
+    account_inactive_days: int = Field(default=365, validation_alias="ACCOUNT_INACTIVE_DAYS")
+    signup_rate_limit_per_hour: int = Field(default=5, validation_alias="SIGNUP_RATE_LIMIT_PER_HOUR")
+    trust_proxy: bool = Field(default=True, validation_alias="TRUST_PROXY")
+
+    # Optional Plausible Analytics domain for the pairing page (empty = disabled).
+    plausible_domain: str = Field(default="", validation_alias="PLAUSIBLE_DOMAIN")
+    plausible_script_url: str = Field(
+        default="https://plausible.io/js/script.js",
+        validation_alias="PLAUSIBLE_SCRIPT_URL",
+    )
 
     host: str = Field(default="0.0.0.0", validation_alias="HOST")
     port: int = Field(default=8080, validation_alias="PORT")
