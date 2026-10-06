@@ -14,6 +14,7 @@
 
 ### Fixed
 
+- Mail bridge pairing page: username fields check availability while typing and show when a name is already taken.
 - Device web settings: password/token fields (including Email Sync device token) keep their real value after load, can be shown via a Show/Hide control, and are no longer wiped when another setting is saved while the browser cleared the masked field.
 - Mail bridge: sanitize attachment filenames that contain CR/LF from MIME header folding so device downloads no longer fail with “Download failed”.
 - Email Sync: default bare bridge hosts to `https://`, follow HTTP→HTTPS redirects, and use a longer request timeout so Force-SSL reverse proxies and brief IMAP polls are less likely to surface as “Couldn't reach the mail bridge”.

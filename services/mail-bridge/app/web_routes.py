@@ -117,6 +117,25 @@ def create_web_router() -> APIRouter:
             "has_passkey": profile.has_passkey,
         }
 
+    @router.get("/username/available")
+    def username_available(request: Request, username: str = "") -> dict[str, Any]:
+        """Live check while typing a username for passkey registration."""
+        user_id = require_web_user(request)
+        store: ItemStore = request.app.state.store
+        raw = (username or "").strip()
+        if len(raw) < 3:
+            return {"username": raw.lower(), "available": False, "status": "too_short"}
+        try:
+            normalized = validate_username(raw)
+        except ValueError:
+            return {"username": raw.lower(), "available": False, "status": "invalid"}
+        taken_by = store.user_id_for_username(normalized)
+        if taken_by is None:
+            return {"username": normalized, "available": True, "status": "available"}
+        if taken_by == user_id:
+            return {"username": normalized, "available": True, "status": "own"}
+        return {"username": normalized, "available": False, "status": "taken"}
+
     @router.post("/logout")
     def logout(request: Request, response: Response) -> dict[str, bool]:
         settings = request.app.state.settings

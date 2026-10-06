@@ -110,6 +110,14 @@
       margin-top: 0.75rem;
     }
     .drop.drag { border-color: var(--accent); color: var(--accent); }
+    .uname-status {
+      margin: -0.35rem 0 0.75rem;
+      min-height: 1.25em;
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+    .uname-status.ok { color: var(--accent); }
+    .uname-status.bad { color: #8b1e1e; }
     .error {
       margin-top: 1rem;
       color: #8b1e1e;
@@ -211,6 +219,7 @@
         <h2 data-i18n="secureTitle">Secure account (optional)</h2>
         <p class="hint" data-i18n="secureHint"></p>
         <input id="regUsername" type="text" maxlength="32" autocomplete="username" data-i18n-placeholder="usernamePh" placeholder="username" />
+        <p id="regUsernameStatus" class="uname-status" aria-live="polite"></p>
         <button id="registerPasskeyBtn" type="button" data-i18n="registerPasskey">Register passkey</button>
       </section>
     </section>
@@ -245,6 +254,7 @@
         <h2 data-i18n="secureTitle">Secure account (optional)</h2>
         <p class="hint" data-i18n="secureHint"></p>
         <input id="acctRegUsername" type="text" maxlength="32" autocomplete="username" data-i18n-placeholder="usernamePh" placeholder="username" />
+        <p id="acctRegUsernameStatus" class="uname-status" aria-live="polite"></p>
         <button id="acctRegisterPasskeyBtn" type="button" data-i18n="registerPasskey">Register passkey</button>
       </div>
       <div class="stack">
@@ -314,6 +324,12 @@
         errorRateLimit: "Too many accounts from this network. Try again in an hour.",
         needPasskey: "This browser does not support passkeys.",
         accountRefreshed: "Account updated.",
+        unameTooShort: "At least 3 characters.",
+        unameInvalid: "Use a-z, 0-9, underscore (3–32).",
+        unameTaken: "Username already taken.",
+        unameAvailable: "Username is available.",
+        unameOwn: "This is your username.",
+        unameChecking: "Checking…",
       },
       de: {
         title: "CrossInk Mail Bridge",
@@ -359,6 +375,12 @@
         errorRateLimit: "Zu viele Accounts aus diesem Netzwerk. Bitte in einer Stunde erneut versuchen.",
         needPasskey: "Dieser Browser unterstützt keine Passkeys.",
         accountRefreshed: "Account aktualisiert.",
+        unameTooShort: "Mindestens 3 Zeichen.",
+        unameInvalid: "Nur a-z, 0-9, Unterstrich (3–32).",
+        unameTaken: "Benutzername bereits vergeben.",
+        unameAvailable: "Benutzername ist frei.",
+        unameOwn: "Das ist dein Benutzername.",
+        unameChecking: "Prüfe…",
       },
     };
 
@@ -615,6 +637,100 @@
         showError(String(err.message || err));
       }
     });
+
+    function wireUsernameCheck(inputId, statusId, buttonId) {
+      const input = document.getElementById(inputId);
+      const statusEl = document.getElementById(statusId);
+      const button = document.getElementById(buttonId);
+      let timer = null;
+      let seq = 0;
+
+      function setStatus(text, kind) {
+        statusEl.textContent = text || "";
+        statusEl.classList.remove("ok", "bad");
+        if (kind) statusEl.classList.add(kind);
+      }
+
+      function applyAvailability(status) {
+        if (status === "available") {
+          setStatus(t.unameAvailable, "ok");
+          button.disabled = false;
+          return;
+        }
+        if (status === "own") {
+          setStatus(t.unameOwn, "ok");
+          button.disabled = false;
+          return;
+        }
+        if (status === "taken") {
+          setStatus(t.unameTaken, "bad");
+          button.disabled = true;
+          return;
+        }
+        if (status === "invalid") {
+          setStatus(t.unameInvalid, "bad");
+          button.disabled = true;
+          return;
+        }
+        if (status === "too_short") {
+          setStatus(t.unameTooShort, "bad");
+          button.disabled = true;
+          return;
+        }
+        setStatus("", null);
+        button.disabled = false;
+      }
+
+      async function checkNow() {
+        const value = input.value.trim();
+        const mySeq = ++seq;
+        if (!value) {
+          setStatus("", null);
+          button.disabled = false;
+          return;
+        }
+        if (value.length < 3) {
+          applyAvailability("too_short");
+          return;
+        }
+        if (!/^[a-zA-Z0-9_]+$/.test(value)) {
+          applyAvailability("invalid");
+          return;
+        }
+        setStatus(t.unameChecking, null);
+        try {
+          const res = await fetch(
+            "/v1/web/username/available?username=" + encodeURIComponent(value),
+            { credentials: "same-origin" }
+          );
+          if (mySeq !== seq) return;
+          if (res.status === 401) {
+            setStatus("", null);
+            button.disabled = false;
+            return;
+          }
+          const body = await res.json().catch(() => ({}));
+          if (mySeq !== seq) return;
+          applyAvailability(body.status || (body.available ? "available" : "taken"));
+        } catch (_) {
+          if (mySeq !== seq) return;
+          setStatus("", null);
+          button.disabled = false;
+        }
+      }
+
+      input.addEventListener("input", () => {
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(checkNow, 280);
+      });
+      input.addEventListener("blur", () => {
+        if (timer) clearTimeout(timer);
+        checkNow();
+      });
+    }
+
+    wireUsernameCheck("regUsername", "regUsernameStatus", "registerPasskeyBtn");
+    wireUsernameCheck("acctRegUsername", "acctRegUsernameStatus", "acctRegisterPasskeyBtn");
 
     createBtn.addEventListener("click", async () => {
       clearMsgs();

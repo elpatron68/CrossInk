@@ -105,6 +105,51 @@ def test_bootstrap_and_issue_device(client: TestClient, store: ItemStore) -> Non
     assert pending.json() == []
 
 
+def test_username_availability_check(client: TestClient) -> None:
+    t1 = _token()
+    t2 = _token()
+    a1 = client.post("/v1/accounts", json={"device_token": t1}).json()
+    client.cookies.clear()
+    a2 = client.post("/v1/accounts", json={"device_token": t2}).json()
+
+    client.cookies.clear()
+    client.post("/v1/web/session/bootstrap", json={"user_id": a1["user_id"], "device_token": t1})
+    with patch("app.web_routes.verify_registration") as mock_reg:
+        mock_reg.return_value = (a1["user_id"], "alice", "credA", b"\x01\x02", 0)
+        assert (
+            client.post(
+                "/v1/web/passkey/register/verify",
+                json={"challenge_key": "k", "credential": {"id": "credA"}},
+            ).status_code
+            == 200
+        )
+
+    client.cookies.clear()
+    client.post("/v1/web/session/bootstrap", json={"user_id": a2["user_id"], "device_token": t2})
+    taken = client.get("/v1/web/username/available", params={"username": "Alice"})
+    assert taken.status_code == 200
+    assert taken.json()["available"] is False
+    assert taken.json()["status"] == "taken"
+    assert taken.json()["username"] == "alice"
+
+    free = client.get("/v1/web/username/available", params={"username": "bob_2"})
+    assert free.status_code == 200
+    assert free.json() == {"username": "bob_2", "available": True, "status": "available"}
+
+    short = client.get("/v1/web/username/available", params={"username": "ab"})
+    assert short.json()["status"] == "too_short"
+    assert short.json()["available"] is False
+
+    bad = client.get("/v1/web/username/available", params={"username": "Bad-Name"})
+    assert bad.json()["status"] == "invalid"
+
+    client.cookies.clear()
+    client.post("/v1/web/session/bootstrap", json={"user_id": a1["user_id"], "device_token": t1})
+    own = client.get("/v1/web/username/available", params={"username": "alice"})
+    assert own.json()["status"] == "own"
+    assert own.json()["available"] is True
+
+
 def test_username_uniqueness(client: TestClient) -> None:
     t1 = _token()
     t2 = _token()
