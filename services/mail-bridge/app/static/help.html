@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Help · CrossInk Mail Bridge</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml" />
+  <!-- PLAUSIBLE -->
+  <style>
+    :root {
+      --bg: #f4f1ea;
+      --ink: #161616;
+      --muted: #5c5854;
+      --mark: #6d192d;
+      --border: #d5cfc3;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 2rem 1rem;
+    }
+    main {
+      width: min(40rem, 100%);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 2rem 1.75rem;
+    }
+    h1 {
+      margin: 0 0 0.35rem;
+      font-size: 1.75rem;
+      letter-spacing: -0.02em;
+    }
+    h1 a.brand-link {
+      color: inherit;
+      text-decoration: none;
+    }
+    h1 a.brand-link:hover,
+    h1 a.brand-link:focus-visible {
+      text-decoration: underline;
+      text-underline-offset: 0.12em;
+    }
+    h2 {
+      margin: 1.75rem 0 0.55rem;
+      padding-top: 0.85rem;
+      border-top: 1px solid var(--border);
+      font-size: 1.15rem;
+    }
+    h2:first-of-type {
+      margin-top: 1.25rem;
+      padding-top: 0;
+      border-top: 0;
+    }
+    .lede {
+      margin: 0 0 1rem;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+    p, li {
+      line-height: 1.5;
+      color: var(--ink);
+    }
+    ul {
+      margin: 0.4rem 0 0.8rem;
+      padding-left: 1.2rem;
+    }
+    li { margin: 0.35rem 0; }
+    .nav {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+    .nav a.linkish,
+    .nav button.linkish {
+      appearance: none;
+      background: transparent;
+      color: var(--ink);
+      border: none;
+      width: auto;
+      padding: 0.4rem 0;
+      font: inherit;
+      font-size: 0.95rem;
+      font-weight: 650;
+      text-decoration: underline;
+      text-underline-offset: 0.16em;
+      cursor: pointer;
+    }
+    .nav a.linkish.active {
+      color: var(--mark);
+      font-weight: 800;
+      text-decoration: none;
+      border-bottom: 2px solid var(--mark);
+      border-radius: 0;
+      padding-bottom: 0.15rem;
+    }
+    .callout {
+      margin: 1rem 0 0;
+      padding: 0.75rem 0.9rem;
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--mark);
+      border-radius: 6px;
+      line-height: 1.45;
+    }
+    .muted { color: var(--muted); }
+  </style>
+</head>
+<body>
+  <main>
+    <h1><a class="brand-link" href="https://crossink.dev">CrossInk</a> <span data-i18n="titleSuffix">Mail Bridge</span></h1>
+    <div class="nav">
+      <a class="linkish" href="/" data-i18n="navBack">Back</a>
+      <a class="linkish active" href="/help" data-i18n="navHelp">Help</a>
+    </div>
+    <p class="lede" data-i18n="lede"></p>
+
+    <h2 data-i18n="emailTitle"></h2>
+    <p data-i18n="emailBody"></p>
+    <ul>
+      <li data-i18n="emailStep1"></li>
+      <li data-i18n="emailStep2"></li>
+      <li data-i18n="emailStep3"></li>
+      <li data-i18n="emailStep4"></li>
+    </ul>
+
+    <h2 data-i18n="uploadTitle"></h2>
+    <p data-i18n="uploadBody"></p>
+
+    <h2 data-i18n="loginTitle"></h2>
+    <p data-i18n="loginBody"></p>
+
+    <h2 data-i18n="privacyTitle"></h2>
+    <p data-i18n="privacyIntro"></p>
+    <ul>
+      <li data-i18n="privacyHost"></li>
+      <li data-i18n="privacyToken"></li>
+      <li data-i18n="privacyPasskey"></li>
+      <li data-i18n="privacyMail"></li>
+      <li data-i18n="privacyQueue"></li>
+      <li data-i18n="privacyAccounts"></li>
+      <li data-i18n="privacyAnalytics"></li>
+    </ul>
+    <p class="callout" data-i18n="privacyAdvice"></p>
+    <p class="muted" data-i18n="privacyNote"></p>
+  </main>
+  <script>
+    const STRINGS = {
+      en: {
+        title: "Help · CrossInk Mail Bridge",
+        titleSuffix: "Mail Bridge",
+        navBack: "Back",
+        navHelp: "Help",
+        lede: "This self-hosted bridge moves books onto your CrossInk reader — by email or by browser upload.",
+        emailTitle: "Email sync",
+        emailBody: "The bridge never runs on the reader. It watches a catch-all mailbox and exposes a download queue that the device pulls over HTTPS.",
+        emailStep1: "Create a profile here to get a private plus-alias (for example bookbridge+…@your-domain) and a device token.",
+        emailStep2: "Send .epub or .txt attachments to that alias (other formats only after conversion via upload).",
+        emailStep3: "The bridge polls IMAP, matches the plus-alias, extracts allowed attachments, and queues the files.",
+        emailStep4: "On the reader, open Settings → Email Sync, enter the Bridge URL and device token, then sync.",
+        uploadTitle: "Browser upload",
+        uploadBody: "After you open a browser session you can drop books into the same queue. EPUB and TXT go through as-is; MOBI, AZW3, and DOCX are converted to EPUB with Calibre. PDF is not supported. Upload is optional — Email Sync works without it.",
+        loginTitle: "Optional browser login",
+        loginBody: "Username and passkey only identify the browser profile so you can reopen it later (upload, issue a new device token). They are not required for Email Sync. You can skip them and create a new profile anytime.",
+        privacyTitle: "Privacy",
+        privacyIntro: "Treat the bridge like a temporary mailbox you control — or that someone you trust operates for you.",
+        privacyHost: "Whoever runs this server can see queued books and the mail that flows through the configured IMAP account.",
+        privacyToken: "The device token is shown once in the browser and stored only as a SHA-256 hash. Keep the plaintext token on the reader; anyone with it can pull your queue.",
+        privacyPasskey: "Passkeys use WebAuthn on your device. The bridge stores a public credential and your chosen username — not a password.",
+        privacyMail: "Processed mail is deleted from IMAP by default. Messages to unknown aliases or without allowed attachments are deleted as well.",
+        privacyQueue: "After the reader acknowledges a download, the stored file is removed. Items never downloaded are purged after a retention window (default 14 days).",
+        privacyAccounts: "Profiles that never sync are removed after 7 days. Profiles with no sync and no mail for 365 days are removed too (operator can change these defaults).",
+        privacyAnalytics: "If the operator sets PLAUSIBLE_DOMAIN, the pairing/help pages may load privacy-oriented Plausible analytics — otherwise no third-party tracker is injected by this app.",
+        privacyAdvice: "Do not send books or documents you would not trust the bridge operator (and their email host) to handle.",
+        privacyNote: "Defaults above match the open-source bridge configuration; a self-hoster may change retention or analytics.",
+      },
+      de: {
+        title: "Hilfe · CrossInk Mail Bridge",
+        titleSuffix: "Mail Bridge",
+        navBack: "Zurück",
+        navHelp: "Hilfe",
+        lede: "Diese selbst gehostete Bridge bringt Bücher auf deinen CrossInk-Reader — per E-Mail oder per Browser-Upload.",
+        emailTitle: "E-Mail-Sync",
+        emailBody: "Die Bridge läuft nicht auf dem Reader. Sie überwacht ein Catch-all-Postfach und stellt eine Download-Warteschlange bereit, die das Gerät per HTTPS abruft.",
+        emailStep1: "Hier ein Profil anlegen: privater Plus-Alias (z. B. bookbridge+…@deine-domain) und Gerätetoken.",
+        emailStep2: "Sende .epub- oder .txt-Anhänge an diesen Alias (andere Formate nur nach Konvertierung über den Upload).",
+        emailStep3: "Die Bridge pollt IMAP, erkennt den Plus-Alias, extrahiert erlaubte Anhänge und stellt die Dateien in die Warteschlange.",
+        emailStep4: "Am Reader: Einstellungen → E-Mail-Sync → Bridge-URL und Gerätetoken eintragen, dann synchronisieren.",
+        uploadTitle: "Browser-Upload",
+        uploadBody: "Mit einer Browser-Session kannst du Bücher in dieselbe Warteschlange legen. EPUB und TXT gehen unverändert durch; MOBI, AZW3 und DOCX werden mit Calibre zu EPUB konvertiert. PDF wird nicht unterstützt. Upload ist optional — E-Mail-Sync funktioniert ohne.",
+        loginTitle: "Optionale Browser-Anmeldung",
+        loginBody: "Benutzername und Passkey dienen nur dazu, dass du dieses Browser-Profil später wieder öffnen kannst (Upload, neues Gerätetoken). Für E-Mail-Sync sind sie nicht nötig. Du kannst sie überspringen und jederzeit ein neues Profil anlegen.",
+        privacyTitle: "Privatsphäre",
+        privacyIntro: "Behandle die Bridge wie ein temporäres Postfach, das du selbst betreibst — oder jemand Vertrauenswürdiges für dich.",
+        privacyHost: "Wer diesen Server betreibt, kann die Warteschlange und die Mails im konfigurierten IMAP-Konto einsehen.",
+        privacyToken: "Das Gerätetoken wird im Browser einmal angezeigt und nur als SHA-256-Hash gespeichert. Bewahre das Klartext-Token am Reader; wer es hat, kann deine Warteschlange abrufen.",
+        privacyPasskey: "Passkeys nutzen WebAuthn auf deinem Gerät. Die Bridge speichert eine öffentliche Credential und deinen Benutzernamen — kein Passwort.",
+        privacyMail: "Verarbeitete Mails werden standardmäßig aus dem IMAP gelöscht. Mails an unbekannte Aliase oder ohne erlaubte Anhänge ebenfalls.",
+        privacyQueue: "Nach Bestätigung durch den Reader wird die gespeicherte Datei gelöscht. Nie abgerufene Einträge werden nach einer Aufbewahrungsfrist entfernt (Standard 14 Tage).",
+        privacyAccounts: "Profile ohne jemals Sync werden nach 7 Tagen gelöscht. Profile ohne Sync und ohne Mail seit 365 Tagen ebenfalls (Betreiber kann die Werte ändern).",
+        privacyAnalytics: "Wenn der Betreiber PLAUSIBLE_DOMAIN setzt, können Pairing-/Hilfe-Seiten Plausible laden — sonst injiziert diese App keinen Third-Party-Tracker.",
+        privacyAdvice: "Sende keine Bücher oder Dokumente, die du dem Bridge-Betreiber (und dem E-Mail-Host) nicht anvertrauen würdest.",
+        privacyNote: "Die genannten Defaults entsprechen der Open-Source-Konfiguration; Self-Hoster können Retention oder Analytics ändern.",
+      },
+    };
+
+    function detectLocale() {
+      const candidates = [
+        ...(navigator.languages || []),
+        navigator.language,
+        navigator.userLanguage,
+      ].filter(Boolean);
+      for (const raw of candidates) {
+        const lang = String(raw).toLowerCase().split("-")[0];
+        if (lang === "de") return "de";
+        if (lang === "en") return "en";
+      }
+      return "en";
+    }
+
+    const locale = detectLocale();
+    const t = STRINGS[locale] || STRINGS.en;
+    document.documentElement.lang = locale;
+
+    document.querySelectorAll("[data-i18n]").forEach((el) => {
+      const key = el.getAttribute("data-i18n");
+      if (t[key] != null) el.textContent = t[key];
+    });
+    document.title = t.title;
+  </script>
+</body>
+</html>

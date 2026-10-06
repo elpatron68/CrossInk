@@ -9,21 +9,18 @@
   <style>
     :root {
       --bg: #f4f1ea;
-      --ink: #1a1a1a;
-      --muted: #5a5a5a;
-      --accent: #2c5f4a;
-      --card: #fffdf8;
-      --border: #d8d2c4;
+      --ink: #161616;
+      --muted: #5c5854;
+      --mark: #6d192d;
+      --border: #d5cfc3;
     }
     * { box-sizing: border-box; }
     body {
       margin: 0;
       min-height: 100vh;
-      font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       color: var(--ink);
-      background:
-        radial-gradient(ellipse at top, #fff8e8 0%, transparent 55%),
-        linear-gradient(160deg, #ebe4d6 0%, var(--bg) 45%, #e2ddd2 100%);
+      background: var(--bg);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -31,16 +28,24 @@
     }
     main {
       width: min(36rem, 100%);
-      background: var(--card);
+      background: var(--bg);
       border: 1px solid var(--border);
-      border-radius: 12px;
+      border-radius: 6px;
       padding: 2rem 1.75rem;
-      box-shadow: 0 12px 40px rgba(0,0,0,0.06);
     }
     h1 {
       margin: 0 0 0.35rem;
       font-size: 1.75rem;
       letter-spacing: -0.02em;
+    }
+    h1 a.brand-link {
+      color: inherit;
+      text-decoration: none;
+    }
+    h1 a.brand-link:hover,
+    h1 a.brand-link:focus-visible {
+      text-decoration: underline;
+      text-underline-offset: 0.12em;
     }
     h2 { margin: 1.5rem 0 0.6rem; font-size: 1.15rem; }
     .lede {
@@ -50,33 +55,37 @@
     }
     button {
       appearance: none;
-      border: none;
-      background: var(--accent);
-      color: #fff;
+      border: 1px solid var(--mark);
+      background: var(--mark);
+      color: var(--bg);
       font: inherit;
       font-size: 1.05rem;
+      font-weight: 700;
       padding: 0.85rem 1.25rem;
-      border-radius: 8px;
+      border-radius: 6px;
       cursor: pointer;
       width: 100%;
     }
     button:disabled { opacity: 0.55; cursor: wait; }
     button.secondary {
       background: transparent;
-      color: var(--accent);
-      border: 1px solid var(--accent);
+      color: var(--ink);
+      border: 1px solid var(--ink);
       width: auto;
       padding: 0.35rem 0.7rem;
       font-size: 0.9rem;
+      font-weight: 650;
     }
     button.linkish {
       background: transparent;
-      color: var(--accent);
+      color: var(--ink);
       border: none;
       width: auto;
       padding: 0.4rem 0;
       font-size: 0.95rem;
+      font-weight: 650;
       text-decoration: underline;
+      text-underline-offset: 0.16em;
     }
     .nav {
       display: flex;
@@ -84,10 +93,20 @@
       flex-wrap: wrap;
       margin-bottom: 1rem;
     }
-    .nav button.linkish.active {
-      font-weight: 700;
+    .nav a.linkish {
+      color: var(--ink);
+      font-size: 0.95rem;
+      font-weight: 650;
+      text-decoration: underline;
+      text-underline-offset: 0.16em;
+      padding: 0.4rem 0;
+    }
+    .nav button.linkish.active,
+    .nav a.linkish.active {
+      color: var(--mark);
+      font-weight: 800;
       text-decoration: none;
-      border-bottom: 2px solid var(--accent);
+      border-bottom: 2px solid var(--mark);
       border-radius: 0;
       padding-bottom: 0.15rem;
     }
@@ -95,37 +114,39 @@
       width: 100%;
       font: inherit;
       padding: 0.65rem 0.75rem;
-      border-radius: 8px;
+      border-radius: 6px;
       border: 1px solid var(--border);
-      background: #fff;
+      background: var(--bg);
+      color: var(--ink);
       margin-bottom: 0.75rem;
     }
     .drop {
-      border: 2px dashed var(--border);
-      border-radius: 10px;
+      border: 1px dashed var(--border);
+      border-radius: 6px;
       padding: 1.25rem;
       text-align: center;
       color: var(--muted);
-      background: #f7f3ea;
+      background: transparent;
       margin-top: 0.75rem;
     }
-    .drop.drag { border-color: var(--accent); color: var(--accent); }
+    .drop.drag { border-color: var(--mark); color: var(--mark); }
     .uname-status {
       margin: -0.35rem 0 0.75rem;
       min-height: 1.25em;
       font-size: 0.9rem;
       color: var(--muted);
     }
-    .uname-status.ok { color: var(--accent); }
-    .uname-status.bad { color: #8b1e1e; }
+    .uname-status.ok { color: var(--ink); font-weight: 700; }
+    .uname-status.bad { color: var(--mark); }
     .error {
       margin-top: 1rem;
-      color: #8b1e1e;
+      color: var(--mark);
       display: none;
     }
     .okmsg {
       margin-top: 0.75rem;
-      color: var(--accent);
+      color: var(--ink);
+      font-weight: 700;
       display: none;
     }
     .panel { display: none; }
@@ -134,8 +155,8 @@
     .field {
       margin: 0 0 1rem;
       padding: 0.85rem 1rem;
-      background: #f7f3ea;
-      border-radius: 8px;
+      background: transparent;
+      border-radius: 6px;
       border: 1px solid var(--border);
     }
     .field label {
@@ -161,9 +182,11 @@
     .warn {
       margin-top: 1rem;
       padding: 0.75rem 0.9rem;
-      background: #fff3d6;
-      border-radius: 8px;
-      color: #5c4510;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--mark);
+      border-radius: 6px;
+      color: var(--ink);
       font-size: 0.95rem;
       line-height: 1.4;
     }
@@ -175,12 +198,13 @@
 </head>
 <body>
   <main>
-    <h1 data-i18n="title">CrossInk Mail Bridge</h1>
+    <h1><a class="brand-link" href="https://crossink.dev">CrossInk</a> <span data-i18n="titleSuffix">Mail Bridge</span></h1>
     <div class="nav">
       <button type="button" class="linkish" id="navCreate" data-i18n="navCreate">Create</button>
       <button type="button" class="linkish" id="navLogin" data-i18n="navLogin">Sign in</button>
       <button type="button" class="linkish" id="navAccount" data-i18n="navAccount" hidden>Account</button>
       <button type="button" class="linkish" id="navLogout" data-i18n="logout" hidden>Sign out</button>
+      <a class="linkish" href="/help" data-i18n="navHelp">Help</a>
     </div>
     <p id="error" class="error" role="alert"></p>
     <p id="okmsg" class="okmsg" role="status"></p>
@@ -216,8 +240,9 @@
         <p class="warn" data-i18n-html="warn"></p>
         <p class="hint" data-i18n="hint"></p>
 
-        <h2 data-i18n="secureTitle">Secure account (optional)</h2>
+        <h2 data-i18n="secureTitle">Browser login (optional)</h2>
         <p class="hint" data-i18n="secureHint"></p>
+        <p class="hint" data-i18n="secureWhy"></p>
         <input id="regUsername" type="text" maxlength="32" autocomplete="username" data-i18n-placeholder="usernamePh" placeholder="username" />
         <p id="regUsernameStatus" class="uname-status" aria-live="polite"></p>
         <button id="registerPasskeyBtn" type="button" data-i18n="registerPasskey">Register passkey</button>
@@ -251,8 +276,9 @@
         <div class="value" id="mePending"></div>
       </div>
       <div id="secureAgain" class="stack" hidden>
-        <h2 data-i18n="secureTitle">Secure account (optional)</h2>
+        <h2 data-i18n="secureTitle">Browser login (optional)</h2>
         <p class="hint" data-i18n="secureHint"></p>
+        <p class="hint" data-i18n="secureWhy"></p>
         <input id="acctRegUsername" type="text" maxlength="32" autocomplete="username" data-i18n-placeholder="usernamePh" placeholder="username" />
         <p id="acctRegUsernameStatus" class="uname-status" aria-live="polite"></p>
         <button id="acctRegisterPasskeyBtn" type="button" data-i18n="registerPasskey">Register passkey</button>
@@ -282,9 +308,11 @@
     const STRINGS = {
       en: {
         title: "CrossInk Mail Bridge",
+        titleSuffix: "Mail Bridge",
         navCreate: "Create",
         navLogin: "Sign in",
         navAccount: "Account",
+        navHelp: "Help",
         lede: "Create an account to get a private email alias and a device token. Send <code>.epub</code> / <code>.txt</code> books to the alias, then sync on your reader.",
         createBtn: "Create account",
         createdBtn: "Account created",
@@ -297,13 +325,14 @@
         copy: "Copy",
         copied: "Copied",
         copyFailed: "Failed",
-        warn: "<strong>Important:</strong> Save the Bridge URL, email alias, and device token. Optionally register a username + passkey below so you can open this account again in the browser.",
+        warn: "<strong>Important:</strong> Save the Bridge URL, email alias, and device token for the reader. A browser login below is optional.",
         hint: "On the reader: Settings → Email Sync → Bridge URL must be https://ci-bridge… (not a LAN IP) + Device Token.",
-        secureTitle: "Secure account (optional)",
-        secureHint: "Choose a username and register a passkey (Touch ID / Windows Hello / security key) to sign in later and issue a new device token if you lose one.",
+        secureTitle: "Browser login (optional)",
+        secureHint: "Username and passkey only identify you so you can open this same profile again in the browser later. You can skip this and create a new profile anytime if you lose access.",
+        secureWhy: "Useful if you upload books from the browser often. For Email Sync alone, alias + device token on the reader are enough.",
         usernamePh: "username (a-z, 0-9, _)",
         registerPasskey: "Register passkey",
-        loginLede: "Sign in with the username and passkey you registered when securing your account.",
+        loginLede: "Only needed if you registered a username and passkey. Opens the same browser profile again (upload, new device token).",
         loginBtn: "Sign in with passkey",
         recoverTitle: "Restore with device token",
         recoverHint: "Lost your passkey? Paste the account user id and a known device token to open a browser session, then register a new passkey.",
@@ -314,6 +343,7 @@
         newToken: "Issue new device token",
         newTokenWarn: "Shown once — copy it into the reader now.",
         logout: "Sign out",
+        clearSession: "Clear session",
         uploadTitle: "Upload books",
         uploadHint: "EPUB/TXT go straight to the queue. MOBI/AZW3/DOCX are converted to EPUB. <strong>PDF is not supported.</strong>",
         dropText: "Drop a file here or choose one",
@@ -333,9 +363,11 @@
       },
       de: {
         title: "CrossInk Mail Bridge",
+        titleSuffix: "Mail Bridge",
         navCreate: "Anlegen",
         navLogin: "Anmelden",
         navAccount: "Account",
+        navHelp: "Hilfe",
         lede: "Lege einen Account an, um einen privaten E-Mail-Alias und ein Gerätetoken zu erhalten. Sende <code>.epub</code>- / <code>.txt</code>-Bücher an den Alias und synchronisiere danach auf dem Reader.",
         createBtn: "Account anlegen",
         createdBtn: "Account angelegt",
@@ -348,13 +380,14 @@
         copy: "Kopieren",
         copied: "Kopiert",
         copyFailed: "Fehler",
-        warn: "<strong>Wichtig:</strong> Bridge-URL, E-Mail-Alias und Gerätetoken speichern. Optional unten Benutzername + Passkey registrieren, um den Account später im Browser wieder zu öffnen.",
+        warn: "<strong>Wichtig:</strong> Bridge-URL, E-Mail-Alias und Gerätetoken für den Reader speichern. Die Browser-Anmeldung unten ist optional.",
         hint: "Am Reader: Einstellungen → E-Mail-Sync → Bridge-URL muss https://… sein (keine LAN-IP) + Gerätetoken.",
-        secureTitle: "Account sichern (optional)",
-        secureHint: "Benutzername wählen und Passkey registrieren (Touch ID / Windows Hello / Security Key), um dich später anzumelden und bei Verlust ein neues Gerätetoken auszustellen.",
+        secureTitle: "Browser-Anmeldung (optional)",
+        secureHint: "Benutzername und Passkey dienen nur dazu, dass du dieses Profil später im Browser wieder öffnen kannst. Du kannst das überspringen und jederzeit ein neues Profil anlegen.",
+        secureWhy: "Sinnvoll, wenn du oft Bücher im Browser hochlädst. Für die reine Mail-Bridge reichen Alias + Gerätetoken am Reader.",
         usernamePh: "Benutzername (a-z, 0-9, _)",
         registerPasskey: "Passkey registrieren",
-        loginLede: "Mit Benutzername und Passkey anmelden, den du beim Sichern des Accounts registriert hast.",
+        loginLede: "Nur nötig, wenn du Benutzername und Passkey registriert hast. Öffnet dasselbe Browser-Profil wieder (Upload, neues Gerätetoken).",
         loginBtn: "Mit Passkey anmelden",
         recoverTitle: "Mit Gerätetoken wiederherstellen",
         recoverHint: "Passkey weg? User-ID und ein bekanntes Gerätetoken einfügen, Session öffnen, dann neuen Passkey registrieren.",
@@ -365,6 +398,7 @@
         newToken: "Neues Gerätetoken ausstellen",
         newTokenWarn: "Nur einmal sichtbar — jetzt in den Reader kopieren.",
         logout: "Abmelden",
+        clearSession: "Session beenden",
         uploadTitle: "Bücher hochladen",
         uploadHint: "EPUB/TXT landen direkt in der Warteschlange. MOBI/AZW3/DOCX werden zu EPUB konvertiert. <strong>PDF wird nicht unterstützt.</strong>",
         dropText: "Datei hier ablegen oder auswählen",
@@ -513,12 +547,12 @@
     let activePanel = "create";
     let hasSession = false;
 
-    function setNavSession(active) {
-      hasSession = !!active;
+    function setNavSession(signedIn) {
+      hasSession = !!signedIn;
+      navCreate.hidden = hasSession;
+      navLogin.hidden = hasSession;
       navAccount.hidden = !hasSession;
       navLogout.hidden = !hasSession;
-      // While signed in, Create/Sign-in stay available so the pairing token
-      // screen remains reachable, but Account is the primary destination.
     }
 
     function markNavActive(name) {
@@ -573,15 +607,21 @@
       if (!res.ok) {
         setNavSession(false);
         document.getElementById("secureAgain").hidden = true;
+        document.getElementById("logoutBtn").hidden = true;
         return null;
       }
       const body = await res.json();
       document.getElementById("meEmail").textContent = body.email || "";
       document.getElementById("meUsername").textContent = body.username || "—";
       document.getElementById("mePending").textContent = String(body.pending_count ?? 0);
-      setNavSession(true);
+      // Browser may have a short-lived cookie after account create; only treat
+      // passkey login as a signed-in nav state (Account + Sign out).
       const needPasskey = !body.has_passkey;
+      setNavSession(!needPasskey);
       document.getElementById("secureAgain").hidden = !needPasskey;
+      const logoutBtn = document.getElementById("logoutBtn");
+      logoutBtn.hidden = false;
+      logoutBtn.textContent = needPasskey ? t.clearSession : t.logout;
       if (needPasskey) {
         const pref = body.username || "";
         document.getElementById("acctRegUsername").value = pref;

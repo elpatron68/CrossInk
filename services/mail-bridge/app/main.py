@@ -159,27 +159,11 @@ def create_app(settings: Settings | None = None, store: ItemStore | None = None)
 
     @app.get("/", response_model=None)
     def pairing_page() -> HTMLResponse:
-        index = STATIC_DIR / "index.html"
-        if not index.is_file():
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pairing UI missing")
-        html = index.read_text(encoding="utf-8")
-        domain = (settings.plausible_domain or "").strip()
-        if domain:
-            script_url = (settings.plausible_script_url or "https://plausible.io/js/script.js").strip()
-            safe_domain = domain.replace('"', "")
-            safe_script = script_url.replace('"', "")
-            snippet = (
-                f'<script defer data-domain="{safe_domain}" src="{safe_script}"></script>\n'
-                "  <!-- PLAUSIBLE -->"
-            )
-            html = html.replace("<!-- PLAUSIBLE -->", snippet, 1)
-        return HTMLResponse(
-            html,
-            headers={
-                "Cache-Control": "no-store, no-cache, must-revalidate",
-                "Pragma": "no-cache",
-            },
-        )
+        return _static_html_page("index.html", settings=settings)
+
+    @app.get("/help", response_model=None)
+    def help_page() -> HTMLResponse:
+        return _static_html_page("help.html", settings=settings)
 
     @app.get("/favicon.ico", include_in_schema=False)
     def favicon() -> FileResponse:
@@ -192,6 +176,30 @@ def create_app(settings: Settings | None = None, store: ItemStore | None = None)
         app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
     return app
+
+
+def _static_html_page(filename: str, *, settings: Settings) -> HTMLResponse:
+    index = STATIC_DIR / filename
+    if not index.is_file():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Page missing")
+    html = index.read_text(encoding="utf-8")
+    domain = (settings.plausible_domain or "").strip()
+    if domain:
+        script_url = (settings.plausible_script_url or "https://plausible.io/js/script.js").strip()
+        safe_domain = domain.replace('"', "")
+        safe_script = script_url.replace('"', "")
+        snippet = (
+            f'<script defer data-domain="{safe_domain}" src="{safe_script}"></script>\n'
+            "  <!-- PLAUSIBLE -->"
+        )
+        html = html.replace("<!-- PLAUSIBLE -->", snippet, 1)
+    return HTMLResponse(
+        html,
+        headers={
+            "Cache-Control": "no-store, no-cache, must-revalidate",
+            "Pragma": "no-cache",
+        },
+    )
 
 
 app = create_app()

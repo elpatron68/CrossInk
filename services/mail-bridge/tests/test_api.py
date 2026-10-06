@@ -121,6 +121,17 @@ def test_pairing_page_served(client: TestClient) -> None:
     assert b"detectLocale" in r.content
     assert b"Account anlegen" in r.content
     assert b"Create account" in r.content
+    assert b'href="/help"' in r.content
+
+
+def test_help_page_served(client: TestClient) -> None:
+    r = client.get("/help")
+    assert r.status_code == 200
+    assert "privacyTitle" in r.text
+    assert "Privatsphäre" in r.text
+    assert "Privacy" in r.text
+    assert b'href="/"' in r.content
+    assert r.headers.get("cache-control", "").startswith("no-store")
 
 
 def test_store_hashes_token(store: ItemStore) -> None:
