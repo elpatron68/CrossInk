@@ -84,6 +84,13 @@
       flex-wrap: wrap;
       margin-bottom: 1rem;
     }
+    .nav button.linkish.active {
+      font-weight: 700;
+      text-decoration: none;
+      border-bottom: 2px solid var(--accent);
+      border-radius: 0;
+      padding-bottom: 0.15rem;
+    }
     input[type="text"] {
       width: 100%;
       font: inherit;
@@ -306,6 +313,7 @@
           "Accounts that never sync are removed after 7 days. Accounts with no sync and no mail for 365 days are removed.",
         errorRateLimit: "Too many accounts from this network. Try again in an hour.",
         needPasskey: "This browser does not support passkeys.",
+        accountRefreshed: "Account updated.",
       },
       de: {
         title: "CrossInk Mail Bridge",
@@ -350,6 +358,7 @@
           "Accounts ohne Sync werden nach 7 Tagen gelöscht. Accounts ohne Sync und ohne Mail seit 365 Tagen ebenfalls.",
         errorRateLimit: "Zu viele Accounts aus diesem Netzwerk. Bitte in einer Stunde erneut versuchen.",
         needPasskey: "Dieser Browser unterstützt keine Passkeys.",
+        accountRefreshed: "Account aktualisiert.",
       },
     };
 
@@ -477,11 +486,31 @@
     };
     const navAccount = document.getElementById("navAccount");
     const navLogout = document.getElementById("navLogout");
+    const navCreate = document.getElementById("navCreate");
+    const navLogin = document.getElementById("navLogin");
+    let activePanel = "create";
+    let hasSession = false;
+
+    function setNavSession(active) {
+      hasSession = !!active;
+      navAccount.hidden = !hasSession;
+      navLogout.hidden = !hasSession;
+      // While signed in, Create/Sign-in stay available so the pairing token
+      // screen remains reachable, but Account is the primary destination.
+    }
+
+    function markNavActive(name) {
+      navCreate.classList.toggle("active", name === "create");
+      navLogin.classList.toggle("active", name === "login");
+      navAccount.classList.toggle("active", name === "account");
+    }
 
     function showPanel(name) {
       clearMsgs();
       Object.values(panels).forEach((p) => p.classList.remove("visible"));
       panels[name].classList.add("visible");
+      activePanel = name;
+      markNavActive(name);
     }
 
     async function copyText(text) {
@@ -520,8 +549,7 @@
     async function refreshMe() {
       const res = await fetch("/v1/web/me", { credentials: "same-origin" });
       if (!res.ok) {
-        navAccount.hidden = true;
-        navLogout.hidden = true;
+        setNavSession(false);
         document.getElementById("secureAgain").hidden = true;
         return null;
       }
@@ -529,8 +557,7 @@
       document.getElementById("meEmail").textContent = body.email || "";
       document.getElementById("meUsername").textContent = body.username || "—";
       document.getElementById("mePending").textContent = String(body.pending_count ?? 0);
-      navAccount.hidden = false;
-      navLogout.hidden = false;
+      setNavSession(true);
       const needPasskey = !body.has_passkey;
       document.getElementById("secureAgain").hidden = !needPasskey;
       if (needPasskey) {
@@ -569,11 +596,24 @@
       return verBody;
     }
 
-    document.getElementById("navCreate").addEventListener("click", () => showPanel("create"));
-    document.getElementById("navLogin").addEventListener("click", () => showPanel("login"));
+    navCreate.addEventListener("click", () => showPanel("create"));
+    navLogin.addEventListener("click", () => showPanel("login"));
     navAccount.addEventListener("click", async () => {
-      await refreshMe();
-      showPanel("account");
+      const wasAccount = activePanel === "account";
+      try {
+        const me = await refreshMe();
+        if (!me) {
+          showPanel("login");
+          showError(t.errorGeneric);
+          return;
+        }
+        showPanel("account");
+        if (wasAccount) showOk(t.accountRefreshed);
+        panels.account.scrollIntoView({ behavior: "smooth", block: "start" });
+      } catch (err) {
+        showPanel("account");
+        showError(String(err.message || err));
+      }
     });
 
     createBtn.addEventListener("click", async () => {
@@ -700,8 +740,7 @@
       await fetch("/v1/web/logout", { method: "POST", credentials: "same-origin" });
       document.getElementById("newTokenBox").hidden = true;
       document.getElementById("secureAgain").hidden = true;
-      navAccount.hidden = true;
-      navLogout.hidden = true;
+      setNavSession(false);
       showPanel("create");
     }
 
@@ -745,6 +784,7 @@
       fileInput.value = "";
     });
 
+    markNavActive("create");
     refreshMe().then((me) => {
       if (me) showPanel("account");
     });
