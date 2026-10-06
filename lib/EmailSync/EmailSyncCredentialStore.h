@@ -30,6 +30,7 @@ class EmailSyncCredentialStore : public PersistableStore<EmailSyncCredentialStor
     return baseUrl;
   }
   // Normalized URL with protocol and without trailing slash.
+  // Bare hosts default to https:// (mail bridge is typically behind Force-SSL).
   std::string getBaseUrl() const;
 
   void setToken(const std::string& value);

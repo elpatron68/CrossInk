@@ -14,6 +14,15 @@ OVERRIDES = f"""
 #endif
 #undef FP_MAX_BITS
 #define FP_MAX_BITS 8192
+/* Public reverse proxies often serve Let's Encrypt ECDSA P-384 leaf certs
+   (e.g. YE2). wolfSSL SP-ECC defaults to P-256 only; enable P-384 so HTTPS
+   handshakes to those hosts succeed (Email Sync, OPDS, OTA). */
+#ifndef WOLFSSL_SP_384
+#define WOLFSSL_SP_384
+#endif
+#ifndef WOLFSSL_SHA384
+#define WOLFSSL_SHA384
+#endif
 /* Arduino-wolfSSL turns on DEBUG_WOLFSSL, which compiles every WOLFSSL_MSG and
    WOLFSSL_ENTER trace string into flash. Keep it only for FREEINK_WOLFSSL_DEBUG. */
 #ifndef FREEINK_WOLFSSL_DEBUG

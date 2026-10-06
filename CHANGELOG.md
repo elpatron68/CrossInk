@@ -10,10 +10,24 @@
 - Mail bridge: delete never-synced accounts after 7 days and inactive accounts after 365 days; rate-limit account creation per IP (proxy-aware).
 - Mail bridge Docker image: non-root container, healthcheck, `./start-docker.sh` for WSL Compose bring-up.
 - Mail bridge pairing page favicon (simple envelope SVG).
+- Mail bridge web app Phase 3: optional username + passkey login, issue a new device token from the browser, upload EPUB/TXT into the device queue, and convert MOBI/AZW3/DOCX to EPUB via Calibre.
+
+### Changed
+
+- Mail bridge web UI uses a flatter e-ink look: paper background, high-contrast text, and burgundy only for the primary action and active navigation.
 
 ### Fixed
 
+- Mail bridge web UI: navigation shows Create/Sign in or Account/Sign out depending on session, not both pairs at once.
+- Mail bridge web UI: Account/Sign out appear only after passkey login; a cookie after account create no longer looks like a signed-in session.
+- Mail bridge web UI: clearer copy that username/passkey is optional and mainly useful for reopening the browser profile (e.g. uploads), not for Email Sync itself.
+- Mail bridge Help page (`/help`, EN/DE) explaining email sync, browser upload, and privacy/retention defaults.
+- Mail bridge pairing page: username fields check availability while typing and show when a name is already taken.
+- Device web settings: password/token fields (including Email Sync device token) keep their real value after load, can be shown via a Show/Hide control, and are no longer wiped when another setting is saved while the browser cleared the masked field.
 - Mail bridge: sanitize attachment filenames that contain CR/LF from MIME header folding so device downloads no longer fail with “Download failed”.
+- Email Sync: default bare bridge hosts to `https://`, follow HTTP→HTTPS redirects, and use a longer request timeout so Force-SSL reverse proxies and brief IMAP polls are less likely to surface as “Couldn't reach the mail bridge”.
+- Mail bridge: bound IMAP socket timeout so an on-demand poll cannot hang `/v1/pending` indefinitely.
+- wolfSSL: enable P-384 ECC and SHA-384 so HTTPS to Let's Encrypt ECDSA (YE2) hosts such as the mail bridge succeeds on device.
 
 ## [v1.6.1] - 2026-10-03
 

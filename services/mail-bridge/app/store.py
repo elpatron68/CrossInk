@@ -8,11 +8,12 @@ import string
 import uuid
 from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Iterator
 
 DEVICE_TOKEN_RE = re.compile(r"^[0-9a-f]{64}$")
+USERNAME_RE = re.compile(r"^[a-z0-9_]{3,32}$")
 _MAIL_LOCAL_ALPHABET = string.ascii_lowercase + string.digits
 
 
@@ -22,6 +23,17 @@ def _utc_now_iso() -> str:
 
 def hash_device_token(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def normalize_username(username: str) -> str:
+    return username.strip().lower()
+
+
+def validate_username(username: str) -> str:
+    normalized = normalize_username(username)
+    if not USERNAME_RE.fullmatch(normalized):
+        raise ValueError("username must be 3-32 chars: a-z, 0-9, underscore")
+    return normalized
 
 
 @dataclass(frozen=True)
@@ -40,6 +52,26 @@ class CreatedAccount:
     user_id: str
     mail_local: str
     email: str
+
+
+@dataclass(frozen=True)
+class UserProfile:
+    user_id: str
+    mail_local: str
+    email: str
+    username: str | None
+    pending_count: int
+    has_passkey: bool
+
+
+@dataclass(frozen=True)
+class WebAuthnCredential:
+    id: str
+    user_id: str
+    credential_id: str
+    public_key: bytes
+    sign_count: int
+    created_at: str
 
 
 class ItemStore:
@@ -122,6 +154,41 @@ class ItemStore:
                 conn.execute(
                     "UPDATE devices SET last_seen_at = created_at WHERE last_seen_at IS NULL"
                 )
+            user_cols = {row[1] for row in conn.execute("PRAGMA table_info(users)").fetchall()}
+            if "username" not in user_cols:
+                conn.execute("ALTER TABLE users ADD COLUMN username TEXT")
+            conn.execute(
+                "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username ON users(username) "
+                "WHERE username IS NOT NULL"
+            )
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS webauthn_credentials (
+                    id TEXT PRIMARY KEY,
+                    user_id TEXT NOT NULL,
+                    credential_id TEXT NOT NULL UNIQUE,
+                    public_key BLOB NOT NULL,
+                    sign_count INTEGER NOT NULL DEFAULT 0,
+                    created_at TEXT NOT NULL,
+                    FOREIGN KEY(user_id) REFERENCES users(id)
+                )
+                """
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_webauthn_user ON webauthn_credentials(user_id)"
+            )
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS web_sessions (
+                    id TEXT PRIMARY KEY,
+                    user_id TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    expires_at TEXT NOT NULL,
+                    FOREIGN KEY(user_id) REFERENCES users(id)
+                )
+                """
+            )
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_web_sessions_user ON web_sessions(user_id)")
 
     def format_alias_email(self, mail_local: str) -> str:
         return f"{self.mail_local_prefix}+{mail_local}@{self.mail_domain}"
@@ -178,6 +245,203 @@ class ItemStore:
                 (mail_local.lower(),),
             ).fetchone()
         return row["id"] if row else None
+
+    def user_id_for_username(self, username: str) -> str | None:
+        normalized = normalize_username(username)
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT id FROM users WHERE username = ? LIMIT 1",
+                (normalized,),
+            ).fetchone()
+        return row["id"] if row else None
+
+    def get_user_profile(self, user_id: str) -> UserProfile | None:
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT id, mail_local, username FROM users WHERE id = ?",
+                (user_id,),
+            ).fetchone()
+            if row is None:
+                return None
+            pending = conn.execute(
+                "SELECT COUNT(*) AS c FROM items WHERE user_id = ? AND status = 'pending'",
+                (user_id,),
+            ).fetchone()["c"]
+            passkey = conn.execute(
+                "SELECT 1 FROM webauthn_credentials WHERE user_id = ? LIMIT 1",
+                (user_id,),
+            ).fetchone()
+        return UserProfile(
+            user_id=row["id"],
+            mail_local=row["mail_local"],
+            email=self.format_alias_email(row["mail_local"]),
+            username=row["username"],
+            pending_count=int(pending),
+            has_passkey=passkey is not None,
+        )
+
+    def create_web_session(self, user_id: str, *, days: int = 14) -> str:
+        session_id = secrets.token_urlsafe(32)
+        created = datetime.now(timezone.utc).replace(microsecond=0)
+        expires = created + timedelta(days=max(1, days))
+        with self._conn() as conn:
+            if conn.execute("SELECT 1 FROM users WHERE id = ?", (user_id,)).fetchone() is None:
+                raise LookupError("user not found")
+            conn.execute(
+                """
+                INSERT INTO web_sessions (id, user_id, created_at, expires_at)
+                VALUES (?, ?, ?, ?)
+                """,
+                (session_id, user_id, created.isoformat(), expires.isoformat()),
+            )
+        return session_id
+
+    def user_id_for_session(self, session_id: str) -> str | None:
+        if not session_id:
+            return None
+        now = _utc_now_iso()
+        with self._conn() as conn:
+            row = conn.execute(
+                """
+                SELECT user_id, expires_at FROM web_sessions WHERE id = ? LIMIT 1
+                """,
+                (session_id,),
+            ).fetchone()
+            if row is None:
+                return None
+            if row["expires_at"] < now:
+                conn.execute("DELETE FROM web_sessions WHERE id = ?", (session_id,))
+                return None
+            return row["user_id"]
+
+    def delete_web_session(self, session_id: str) -> None:
+        with self._conn() as conn:
+            conn.execute("DELETE FROM web_sessions WHERE id = ?", (session_id,))
+
+    def set_username(self, user_id: str, username: str) -> str:
+        normalized = validate_username(username)
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT username FROM users WHERE id = ?",
+                (user_id,),
+            ).fetchone()
+            if row is None:
+                raise LookupError("user not found")
+            existing = row["username"]
+            if existing and existing != normalized:
+                raise ValueError("username already set")
+            conflict = conn.execute(
+                "SELECT id FROM users WHERE username = ? AND id != ? LIMIT 1",
+                (normalized, user_id),
+            ).fetchone()
+            if conflict is not None:
+                raise LookupError("username already taken")
+            conn.execute(
+                "UPDATE users SET username = ? WHERE id = ?",
+                (normalized, user_id),
+            )
+        return normalized
+
+    def list_webauthn_credentials(self, user_id: str) -> list[WebAuthnCredential]:
+        with self._conn() as conn:
+            rows = conn.execute(
+                """
+                SELECT id, user_id, credential_id, public_key, sign_count, created_at
+                FROM webauthn_credentials WHERE user_id = ?
+                """,
+                (user_id,),
+            ).fetchall()
+        return [
+            WebAuthnCredential(
+                id=row["id"],
+                user_id=row["user_id"],
+                credential_id=row["credential_id"],
+                public_key=bytes(row["public_key"]),
+                sign_count=int(row["sign_count"]),
+                created_at=row["created_at"],
+            )
+            for row in rows
+        ]
+
+    def get_webauthn_credential(self, credential_id: str) -> WebAuthnCredential | None:
+        with self._conn() as conn:
+            row = conn.execute(
+                """
+                SELECT id, user_id, credential_id, public_key, sign_count, created_at
+                FROM webauthn_credentials WHERE credential_id = ? LIMIT 1
+                """,
+                (credential_id,),
+            ).fetchone()
+        if row is None:
+            return None
+        return WebAuthnCredential(
+            id=row["id"],
+            user_id=row["user_id"],
+            credential_id=row["credential_id"],
+            public_key=bytes(row["public_key"]),
+            sign_count=int(row["sign_count"]),
+            created_at=row["created_at"],
+        )
+
+    def add_webauthn_credential(
+        self,
+        *,
+        user_id: str,
+        credential_id: str,
+        public_key: bytes,
+        sign_count: int = 0,
+    ) -> WebAuthnCredential:
+        row_id = uuid.uuid4().hex
+        created_at = _utc_now_iso()
+        with self._conn() as conn:
+            if conn.execute("SELECT 1 FROM users WHERE id = ?", (user_id,)).fetchone() is None:
+                raise LookupError("user not found")
+            if conn.execute(
+                "SELECT 1 FROM webauthn_credentials WHERE credential_id = ? LIMIT 1",
+                (credential_id,),
+            ).fetchone():
+                raise LookupError("credential already registered")
+            conn.execute(
+                """
+                INSERT INTO webauthn_credentials (
+                    id, user_id, credential_id, public_key, sign_count, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (row_id, user_id, credential_id, public_key, sign_count, created_at),
+            )
+        return WebAuthnCredential(
+            id=row_id,
+            user_id=user_id,
+            credential_id=credential_id,
+            public_key=public_key,
+            sign_count=sign_count,
+            created_at=created_at,
+        )
+
+    def update_webauthn_sign_count(self, credential_id: str, sign_count: int) -> None:
+        with self._conn() as conn:
+            conn.execute(
+                "UPDATE webauthn_credentials SET sign_count = ? WHERE credential_id = ?",
+                (sign_count, credential_id),
+            )
+
+    def create_device_for_user(self, user_id: str, *, label: str = "web") -> str:
+        """Issue a new device token (plaintext once). Returns the raw token."""
+        token = secrets.token_hex(32)
+        token_hash = hash_device_token(token)
+        device_id = uuid.uuid4().hex
+        created_at = _utc_now_iso()
+        with self._conn() as conn:
+            if conn.execute("SELECT 1 FROM users WHERE id = ?", (user_id,)).fetchone() is None:
+                raise LookupError("user not found")
+            conn.execute(
+                """
+                INSERT INTO devices (id, user_id, token_hash, label, created_at, last_seen_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (device_id, user_id, token_hash, label, created_at, created_at),
+            )
+        return token
 
     def has_imap_sha(self, imap_uid: str, sha256: str) -> bool:
         with self._conn() as conn:
@@ -334,6 +598,8 @@ class ItemStore:
                     pass
             conn.execute("DELETE FROM items WHERE user_id = ?", (user_id,))
             conn.execute("DELETE FROM devices WHERE user_id = ?", (user_id,))
+            conn.execute("DELETE FROM webauthn_credentials WHERE user_id = ?", (user_id,))
+            conn.execute("DELETE FROM web_sessions WHERE user_id = ?", (user_id,))
             conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
         if user_dir.is_dir():
             for child in user_dir.iterdir():

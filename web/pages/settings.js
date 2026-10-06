@@ -51,10 +51,19 @@ let allSettings = [];
 
     if (setting.type === 'string') {
       const nameLower = setting.name.toLowerCase();
-      const inputType = (nameLower.includes('password') || nameLower.includes('token')) ? 'password' : 'text';
+      const isSecret = nameLower.includes('password') || nameLower.includes('token');
       const val = setting.value || '';
-      return '<input type="' + inputType + '" id="' + id + '" value="' + escapeHtml(val) + '"' +
-        ' oninput="handleSettingChanged(\'' + setting.key + '\')">';
+      if (!isSecret) {
+        return '<input type="text" id="' + id + '" value="' + escapeHtml(val) + '"' +
+          ' oninput="handleSettingChanged(\'' + setting.key + '\')">';
+      }
+      return '<span class="password-field">' +
+        '<input type="password" id="' + id + '" value="' + escapeHtml(val) + '"' +
+        ' autocomplete="off" autocapitalize="off" spellcheck="false" data-1p-ignore="true" data-lpignore="true"' +
+        ' oninput="handleSettingChanged(\'' + setting.key + '\')">' +
+        '<button type="button" class="password-reveal" id="' + id + '-reveal"' +
+        ' onclick="togglePasswordReveal(\'' + id + '\')" aria-label="Show value" title="Show/hide">Show</button>' +
+        '</span>';
     }
 
     return '';
@@ -78,6 +87,19 @@ let allSettings = [];
     }
     return undefined;
   }
+
+  function togglePasswordReveal(inputId) {
+    const el = document.getElementById(inputId);
+    const btn = document.getElementById(inputId + '-reveal');
+    if (!el) return;
+    const show = el.type === 'password';
+    el.type = show ? 'text' : 'password';
+    if (btn) {
+      btn.textContent = show ? 'Hide' : 'Show';
+      btn.setAttribute('aria-label', show ? 'Hide value' : 'Show value');
+    }
+  }
+  window.togglePasswordReveal = togglePasswordReveal;
 
   function markChanged() {
     document.getElementById('saveBtn').disabled = false;
@@ -229,6 +251,15 @@ let allSettings = [];
       }
 
       container.innerHTML = html;
+      // Browsers often strip password input values set via HTML attributes.
+      // Re-apply from the API payload so Show and Save see the real token.
+      allSettings.forEach(function(s) {
+        const nameLower = (s.name || '').toLowerCase();
+        const isSecret = s.type === 'string' && (nameLower.includes('password') || nameLower.includes('token'));
+        if (!isSecret) return;
+        const el = document.getElementById('setting-' + s.key);
+        if (el && s.value) el.value = s.value;
+      });
       updateSettingsVisibility();
       document.getElementById('save-container').style.display = '';
       document.getElementById('saveBtn').disabled = true;
@@ -253,9 +284,13 @@ let allSettings = [];
     const changes = {};
     allSettings.forEach(function(s) {
       const current = getValue(s);
-      if (current !== undefined && current !== originalValues[s.key]) {
-        changes[s.key] = current;
-      }
+      if (current === undefined || current === originalValues[s.key]) return;
+      // Don't wipe secret string settings if the password field was cleared
+      // by a browser password manager / autofill without the user intending it.
+      const nameLower = (s.name || '').toLowerCase();
+      const isSecret = s.type === 'string' && (nameLower.includes('password') || nameLower.includes('token'));
+      if (isSecret && current === '' && originalValues[s.key]) return;
+      changes[s.key] = current;
     });
 
     if (Object.keys(changes).length === 0) {

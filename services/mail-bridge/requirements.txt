@@ -4,5 +4,6 @@ python-multipart==0.0.20
 pydantic==2.11.3
 pydantic-settings==2.8.1
 aiofiles==24.1.0
+webauthn==2.5.0
 pytest==8.3.5
 httpx==0.28.1
