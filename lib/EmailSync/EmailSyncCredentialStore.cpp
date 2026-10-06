@@ -48,7 +48,9 @@ std::string EmailSyncCredentialStore::getBaseUrl() const {
   std::string url = baseUrl;
   if (url.empty()) return url;
   if (url.find("://") == std::string::npos) {
-    url = "http://" + url;
+    // Prefer HTTPS: public bridges sit behind Force-SSL; HTTP would 301 and the
+    // client historically did not follow redirects (surfaced as a network failure).
+    url = "https://" + url;
   }
   while (!url.empty() && url.back() == '/') {
     url.pop_back();

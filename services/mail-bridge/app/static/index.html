@@ -30,7 +30,7 @@
       padding: 2rem 1rem;
     }
     main {
-      width: min(32rem, 100%);
+      width: min(36rem, 100%);
       background: var(--card);
       border: 1px solid var(--border);
       border-radius: 12px;
@@ -42,8 +42,9 @@
       font-size: 1.75rem;
       letter-spacing: -0.02em;
     }
+    h2 { margin: 1.5rem 0 0.6rem; font-size: 1.15rem; }
     .lede {
-      margin: 0 0 1.5rem;
+      margin: 0 0 1.25rem;
       color: var(--muted);
       line-height: 1.45;
     }
@@ -68,13 +69,53 @@
       padding: 0.35rem 0.7rem;
       font-size: 0.9rem;
     }
+    button.linkish {
+      background: transparent;
+      color: var(--accent);
+      border: none;
+      width: auto;
+      padding: 0.4rem 0;
+      font-size: 0.95rem;
+      text-decoration: underline;
+    }
+    .nav {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+    input[type="text"] {
+      width: 100%;
+      font: inherit;
+      padding: 0.65rem 0.75rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #fff;
+      margin-bottom: 0.75rem;
+    }
+    .drop {
+      border: 2px dashed var(--border);
+      border-radius: 10px;
+      padding: 1.25rem;
+      text-align: center;
+      color: var(--muted);
+      background: #f7f3ea;
+      margin-top: 0.75rem;
+    }
+    .drop.drag { border-color: var(--accent); color: var(--accent); }
     .error {
       margin-top: 1rem;
       color: #8b1e1e;
       display: none;
     }
-    .result { display: none; margin-top: 1.5rem; }
-    .result.visible, .error.visible { display: block; }
+    .okmsg {
+      margin-top: 0.75rem;
+      color: var(--accent);
+      display: none;
+    }
+    .panel { display: none; }
+    .panel.visible { display: block; }
+    .error.visible, .okmsg.visible { display: block; }
     .field {
       margin: 0 0 1rem;
       padding: 0.85rem 1rem;
@@ -111,84 +152,204 @@
       font-size: 0.95rem;
       line-height: 1.4;
     }
-    .hint { margin-top: 1.25rem; color: var(--muted); font-size: 0.95rem; line-height: 1.4; }
+    .hint { margin-top: 1rem; color: var(--muted); font-size: 0.95rem; line-height: 1.4; }
+    .stack { display: flex; flex-direction: column; gap: 0.6rem; }
+    .stack + .stack { margin-top: 0.75rem; }
+    #secureAgain { margin-bottom: 0.75rem; }
   </style>
 </head>
 <body>
   <main>
     <h1 data-i18n="title">CrossInk Mail Bridge</h1>
-    <p class="lede" data-i18n-html="lede"></p>
-
-    <button id="createBtn" type="button" data-i18n="createBtn">Create account</button>
-    <p class="hint" style="margin-top:0.85rem" data-i18n="multiDevice"></p>
-    <p class="hint" data-i18n="retention"></p>
+    <div class="nav">
+      <button type="button" class="linkish" id="navCreate" data-i18n="navCreate">Create</button>
+      <button type="button" class="linkish" id="navLogin" data-i18n="navLogin">Sign in</button>
+      <button type="button" class="linkish" id="navAccount" data-i18n="navAccount" hidden>Account</button>
+      <button type="button" class="linkish" id="navLogout" data-i18n="logout" hidden>Sign out</button>
+    </div>
     <p id="error" class="error" role="alert"></p>
+    <p id="okmsg" class="okmsg" role="status"></p>
 
-    <section id="result" class="result" aria-live="polite">
+    <section id="panelCreate" class="panel visible">
+      <p class="lede" data-i18n-html="lede"></p>
+      <button id="createBtn" type="button" data-i18n="createBtn">Create account</button>
+      <p class="hint" data-i18n="multiDevice"></p>
+      <p class="hint" data-i18n="retention"></p>
+
+      <section id="result" class="panel" aria-live="polite">
+        <div class="field">
+          <label data-i18n="labelEmail">Email alias</label>
+          <div class="row">
+            <div class="value" id="emailValue"></div>
+            <button class="secondary" type="button" data-copy="emailValue" data-i18n="copy">Copy</button>
+          </div>
+        </div>
+        <div class="field">
+          <label data-i18n="labelToken">Device token</label>
+          <div class="row">
+            <div class="value" id="tokenValue"></div>
+            <button class="secondary" type="button" data-copy="tokenValue" data-i18n="copy">Copy</button>
+          </div>
+        </div>
+        <div class="field">
+          <label data-i18n="labelUrl">Bridge URL</label>
+          <div class="row">
+            <div class="value" id="urlValue"></div>
+            <button class="secondary" type="button" data-copy="urlValue" data-i18n="copy">Copy</button>
+          </div>
+        </div>
+        <p class="warn" data-i18n-html="warn"></p>
+        <p class="hint" data-i18n="hint"></p>
+
+        <h2 data-i18n="secureTitle">Secure account (optional)</h2>
+        <p class="hint" data-i18n="secureHint"></p>
+        <input id="regUsername" type="text" maxlength="32" autocomplete="username" data-i18n-placeholder="usernamePh" placeholder="username" />
+        <button id="registerPasskeyBtn" type="button" data-i18n="registerPasskey">Register passkey</button>
+      </section>
+    </section>
+
+    <section id="panelLogin" class="panel">
+      <p class="lede" data-i18n="loginLede"></p>
+      <input id="loginUsername" type="text" maxlength="32" autocomplete="username" data-i18n-placeholder="usernamePh" placeholder="username" />
+      <button id="loginBtn" type="button" data-i18n="loginBtn">Sign in with passkey</button>
+
+      <h2 data-i18n="recoverTitle">Restore with device token</h2>
+      <p class="hint" data-i18n="recoverHint"></p>
+      <input id="recoverUserId" type="text" maxlength="64" autocomplete="off" data-i18n-placeholder="userIdPh" placeholder="user id" />
+      <input id="recoverToken" type="text" maxlength="64" autocomplete="off" data-i18n-placeholder="tokenPh" placeholder="device token" />
+      <button id="recoverBtn" type="button" class="secondary" data-i18n="recoverBtn">Restore session</button>
+    </section>
+
+    <section id="panelAccount" class="panel">
+      <p class="lede" data-i18n="accountLede"></p>
       <div class="field">
         <label data-i18n="labelEmail">Email alias</label>
-        <div class="row">
-          <div class="value" id="emailValue"></div>
-          <button class="secondary" type="button" data-copy="emailValue" data-i18n="copy">Copy</button>
-        </div>
+        <div class="value" id="meEmail"></div>
       </div>
       <div class="field">
+        <label data-i18n="labelUsername">Username</label>
+        <div class="value" id="meUsername"></div>
+      </div>
+      <div class="field">
+        <label data-i18n="labelPending">Pending books</label>
+        <div class="value" id="mePending"></div>
+      </div>
+      <div id="secureAgain" class="stack" hidden>
+        <h2 data-i18n="secureTitle">Secure account (optional)</h2>
+        <p class="hint" data-i18n="secureHint"></p>
+        <input id="acctRegUsername" type="text" maxlength="32" autocomplete="username" data-i18n-placeholder="usernamePh" placeholder="username" />
+        <button id="acctRegisterPasskeyBtn" type="button" data-i18n="registerPasskey">Register passkey</button>
+      </div>
+      <div class="stack">
+        <button id="newTokenBtn" type="button" data-i18n="newToken">Issue new device token</button>
+        <button id="logoutBtn" type="button" class="secondary" data-i18n="logout">Sign out</button>
+      </div>
+      <div id="newTokenBox" class="field" hidden>
         <label data-i18n="labelToken">Device token</label>
         <div class="row">
-          <div class="value" id="tokenValue"></div>
-          <button class="secondary" type="button" data-copy="tokenValue" data-i18n="copy">Copy</button>
+          <div class="value" id="newTokenValue"></div>
+          <button class="secondary" type="button" data-copy="newTokenValue" data-i18n="copy">Copy</button>
         </div>
+        <p class="warn" data-i18n="newTokenWarn"></p>
       </div>
-      <div class="field">
-        <label data-i18n="labelUrl">Bridge URL</label>
-        <div class="row">
-          <div class="value" id="urlValue"></div>
-          <button class="secondary" type="button" data-copy="urlValue" data-i18n="copy">Copy</button>
-        </div>
+
+      <h2 data-i18n="uploadTitle">Upload books</h2>
+      <p class="hint" data-i18n-html="uploadHint"></p>
+      <div class="drop" id="dropZone">
+        <p data-i18n="dropText">Drop a file here or choose one</p>
+        <input id="fileInput" type="file" accept=".epub,.txt,.mobi,.azw3,.docx" />
       </div>
-      <p class="warn" data-i18n-html="warn"></p>
-      <p class="hint" data-i18n="hint"></p>
     </section>
   </main>
   <script>
     const STRINGS = {
       en: {
         title: "CrossInk Mail Bridge",
+        navCreate: "Create",
+        navLogin: "Sign in",
+        navAccount: "Account",
         lede: "Create an account to get a private email alias and a device token. Send <code>.epub</code> / <code>.txt</code> books to the alias, then sync on your reader.",
         createBtn: "Create account",
         createdBtn: "Account created",
-        multiDevice: "Multiple readers? Create a separate account (alias + token) for each device — one alias maps to one inbox queue.",
+        multiDevice: "Multiple readers? Create a separate account (alias + token) for each device — or sign in later with a passkey and issue a new device token.",
         labelEmail: "Email alias",
         labelToken: "Device token",
         labelUrl: "Bridge URL",
+        labelUsername: "Username",
+        labelPending: "Pending books",
         copy: "Copy",
         copied: "Copied",
         copyFailed: "Failed",
-        warn: "<strong>Important:</strong> This screen is shown only once. Save the Bridge URL, email alias, and device token in a safe place — the server cannot show them again. Share the email alias only with people you trust (anyone who can send to it can queue books for your reader).",
-        hint: "On the reader: Settings → Email Sync → Bridge URL + Device Token. Extra devices need their own account (new alias), not a shared token.",
+        warn: "<strong>Important:</strong> Save the Bridge URL, email alias, and device token. Optionally register a username + passkey below so you can open this account again in the browser.",
+        hint: "On the reader: Settings → Email Sync → Bridge URL must be https://ci-bridge… (not a LAN IP) + Device Token.",
+        secureTitle: "Secure account (optional)",
+        secureHint: "Choose a username and register a passkey (Touch ID / Windows Hello / security key) to sign in later and issue a new device token if you lose one.",
+        usernamePh: "username (a-z, 0-9, _)",
+        registerPasskey: "Register passkey",
+        loginLede: "Sign in with the username and passkey you registered when securing your account.",
+        loginBtn: "Sign in with passkey",
+        recoverTitle: "Restore with device token",
+        recoverHint: "Lost your passkey? Paste the account user id and a known device token to open a browser session, then register a new passkey.",
+        userIdPh: "user id (from account create)",
+        tokenPh: "device token (64 hex)",
+        recoverBtn: "Restore session",
+        accountLede: "Your bridge account. Upload books here or keep using email.",
+        newToken: "Issue new device token",
+        newTokenWarn: "Shown once — copy it into the reader now.",
+        logout: "Sign out",
+        uploadTitle: "Upload books",
+        uploadHint: "EPUB/TXT go straight to the queue. MOBI/AZW3/DOCX are converted to EPUB. <strong>PDF is not supported.</strong>",
+        dropText: "Drop a file here or choose one",
+        uploadOk: "Queued:",
         errorGeneric: "Something went wrong.",
         retention:
           "Accounts that never sync are removed after 7 days. Accounts with no sync and no mail for 365 days are removed.",
         errorRateLimit: "Too many accounts from this network. Try again in an hour.",
+        needPasskey: "This browser does not support passkeys.",
       },
       de: {
         title: "CrossInk Mail Bridge",
+        navCreate: "Anlegen",
+        navLogin: "Anmelden",
+        navAccount: "Account",
         lede: "Lege einen Account an, um einen privaten E-Mail-Alias und ein Gerätetoken zu erhalten. Sende <code>.epub</code>- / <code>.txt</code>-Bücher an den Alias und synchronisiere danach auf dem Reader.",
         createBtn: "Account anlegen",
         createdBtn: "Account angelegt",
-        multiDevice: "Mehrere Reader? Für jedes Gerät einen eigenen Account (Alias + Token) anlegen — ein Alias gehört zu einer Warteschlange.",
+        multiDevice: "Mehrere Reader? Eigenen Account pro Gerät — oder später per Passkey anmelden und ein neues Gerätetoken ausstellen.",
         labelEmail: "E-Mail-Alias",
         labelToken: "Gerätetoken",
         labelUrl: "Bridge-URL",
+        labelUsername: "Benutzername",
+        labelPending: "Warteschlange",
         copy: "Kopieren",
         copied: "Kopiert",
         copyFailed: "Fehler",
-        warn: "<strong>Wichtig:</strong> Diese Angaben werden nur einmal angezeigt. Bridge-URL, E-Mail-Alias und Gerätetoken unbedingt an einem sicheren Ort speichern — der Server kann sie nicht erneut anzeigen. Den E-Mail-Alias nur an vertrauenswürdige Personen weitergeben (jeder Absender kann Bücher in deine Warteschlange legen).",
-        hint: "Am Reader: Einstellungen → E-Mail-Sync → Bridge-URL + Gerätetoken. Weitere Geräte brauchen einen eigenen Account (neuen Alias), kein gemeinsames Token.",
+        warn: "<strong>Wichtig:</strong> Bridge-URL, E-Mail-Alias und Gerätetoken speichern. Optional unten Benutzername + Passkey registrieren, um den Account später im Browser wieder zu öffnen.",
+        hint: "Am Reader: Einstellungen → E-Mail-Sync → Bridge-URL muss https://… sein (keine LAN-IP) + Gerätetoken.",
+        secureTitle: "Account sichern (optional)",
+        secureHint: "Benutzername wählen und Passkey registrieren (Touch ID / Windows Hello / Security Key), um dich später anzumelden und bei Verlust ein neues Gerätetoken auszustellen.",
+        usernamePh: "Benutzername (a-z, 0-9, _)",
+        registerPasskey: "Passkey registrieren",
+        loginLede: "Mit Benutzername und Passkey anmelden, den du beim Sichern des Accounts registriert hast.",
+        loginBtn: "Mit Passkey anmelden",
+        recoverTitle: "Mit Gerätetoken wiederherstellen",
+        recoverHint: "Passkey weg? User-ID und ein bekanntes Gerätetoken einfügen, Session öffnen, dann neuen Passkey registrieren.",
+        userIdPh: "User-ID (vom Account-Anlegen)",
+        tokenPh: "Gerätetoken (64 Hex)",
+        recoverBtn: "Session wiederherstellen",
+        accountLede: "Dein Bridge-Account. Bücher hier hochladen oder weiter per E-Mail senden.",
+        newToken: "Neues Gerätetoken ausstellen",
+        newTokenWarn: "Nur einmal sichtbar — jetzt in den Reader kopieren.",
+        logout: "Abmelden",
+        uploadTitle: "Bücher hochladen",
+        uploadHint: "EPUB/TXT landen direkt in der Warteschlange. MOBI/AZW3/DOCX werden zu EPUB konvertiert. <strong>PDF wird nicht unterstützt.</strong>",
+        dropText: "Datei hier ablegen oder auswählen",
+        uploadOk: "In Warteschlange:",
         errorGeneric: "Etwas ist schiefgelaufen.",
         retention:
           "Accounts ohne Sync werden nach 7 Tagen gelöscht. Accounts ohne Sync und ohne Mail seit 365 Tagen ebenfalls.",
         errorRateLimit: "Zu viele Accounts aus diesem Netzwerk. Bitte in einer Stunde erneut versuchen.",
+        needPasskey: "Dieser Browser unterstützt keine Passkeys.",
       },
     };
 
@@ -219,10 +380,30 @@
         const key = el.getAttribute("data-i18n-html");
         if (t[key] != null) el.innerHTML = t[key];
       });
+      document.querySelectorAll("[data-i18n-placeholder]").forEach((el) => {
+        const key = el.getAttribute("data-i18n-placeholder");
+        if (t[key] != null) el.placeholder = t[key];
+      });
       document.title = t.title;
     }
-
     applyI18n();
+
+    function showError(msg) {
+      okmsg.classList.remove("visible");
+      errorEl.textContent = msg || t.errorGeneric;
+      errorEl.classList.add("visible");
+    }
+    function showOk(msg) {
+      errorEl.classList.remove("visible");
+      okmsg.textContent = msg;
+      okmsg.classList.add("visible");
+    }
+    function clearMsgs() {
+      errorEl.classList.remove("visible");
+      okmsg.classList.remove("visible");
+      errorEl.textContent = "";
+      okmsg.textContent = "";
+    }
 
     function randomTokenHex() {
       const bytes = new Uint8Array(32);
@@ -230,26 +411,92 @@
       return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
     }
 
-    const createBtn = document.getElementById("createBtn");
+    function bufferToBase64url(buf) {
+      const bytes = new Uint8Array(buf);
+      let str = "";
+      bytes.forEach((b) => { str += String.fromCharCode(b); });
+      return btoa(str).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+    }
+    function base64urlToBuffer(b64) {
+      const pad = "=".repeat((4 - (b64.length % 4)) % 4);
+      const base64 = (b64 + pad).replace(/-/g, "+").replace(/_/g, "/");
+      const raw = atob(base64);
+      const out = new Uint8Array(raw.length);
+      for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+      return out.buffer;
+    }
+    function publicKeyOptionsFromServer(options) {
+      const o = structuredClone(options);
+      o.challenge = base64urlToBuffer(o.challenge);
+      if (o.user && o.user.id) o.user.id = base64urlToBuffer(o.user.id);
+      if (o.excludeCredentials) {
+        o.excludeCredentials = o.excludeCredentials.map((c) => ({
+          ...c,
+          id: base64urlToBuffer(c.id),
+        }));
+      }
+      if (o.allowCredentials) {
+        o.allowCredentials = o.allowCredentials.map((c) => ({
+          ...c,
+          id: base64urlToBuffer(c.id),
+        }));
+      }
+      return o;
+    }
+    function credentialToJSON(cred) {
+      const clientDataJSON = bufferToBase64url(cred.response.clientDataJSON);
+      const out = {
+        id: cred.id,
+        rawId: bufferToBase64url(cred.rawId),
+        type: cred.type,
+        response: { clientDataJSON },
+      };
+      if (cred.response.attestationObject) {
+        out.response.attestationObject = bufferToBase64url(cred.response.attestationObject);
+      }
+      if (cred.response.authenticatorData) {
+        out.response.authenticatorData = bufferToBase64url(cred.response.authenticatorData);
+      }
+      if (cred.response.signature) {
+        out.response.signature = bufferToBase64url(cred.response.signature);
+      }
+      if (cred.response.userHandle) {
+        out.response.userHandle = bufferToBase64url(cred.response.userHandle);
+      }
+      return out;
+    }
+
     const errorEl = document.getElementById("error");
+    const okmsg = document.getElementById("okmsg");
+    const createBtn = document.getElementById("createBtn");
     const resultEl = document.getElementById("result");
+    const panels = {
+      create: document.getElementById("panelCreate"),
+      login: document.getElementById("panelLogin"),
+      account: document.getElementById("panelAccount"),
+    };
+    const navAccount = document.getElementById("navAccount");
+    const navLogout = document.getElementById("navLogout");
+
+    function showPanel(name) {
+      clearMsgs();
+      Object.values(panels).forEach((p) => p.classList.remove("visible"));
+      panels[name].classList.add("visible");
+    }
 
     async function copyText(text) {
       if (window.isSecureContext && navigator.clipboard && navigator.clipboard.writeText) {
         await navigator.clipboard.writeText(text);
         return;
       }
-      // HTTP / non-secure contexts: Clipboard API is unavailable.
       const ta = document.createElement("textarea");
       ta.value = text;
       ta.setAttribute("readonly", "");
       ta.style.position = "fixed";
       ta.style.top = "-9999px";
-      ta.style.left = "-9999px";
       document.body.appendChild(ta);
       ta.focus();
       ta.select();
-      ta.setSelectionRange(0, ta.value.length);
       const ok = document.execCommand("copy");
       document.body.removeChild(ta);
       if (!ok) throw new Error("copy failed");
@@ -270,22 +517,79 @@
       });
     });
 
+    async function refreshMe() {
+      const res = await fetch("/v1/web/me", { credentials: "same-origin" });
+      if (!res.ok) {
+        navAccount.hidden = true;
+        navLogout.hidden = true;
+        document.getElementById("secureAgain").hidden = true;
+        return null;
+      }
+      const body = await res.json();
+      document.getElementById("meEmail").textContent = body.email || "";
+      document.getElementById("meUsername").textContent = body.username || "—";
+      document.getElementById("mePending").textContent = String(body.pending_count ?? 0);
+      navAccount.hidden = false;
+      navLogout.hidden = false;
+      const needPasskey = !body.has_passkey;
+      document.getElementById("secureAgain").hidden = !needPasskey;
+      if (needPasskey) {
+        const pref = body.username || "";
+        document.getElementById("acctRegUsername").value = pref;
+        if (!document.getElementById("regUsername").value) {
+          document.getElementById("regUsername").value = pref;
+        }
+      }
+      return body;
+    }
+
+    async function registerPasskeyWithUsername(username) {
+      if (!window.PublicKeyCredential) throw new Error(t.needPasskey);
+      const optRes = await fetch("/v1/web/passkey/register/options", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username }),
+      });
+      const optBody = await optRes.json().catch(() => ({}));
+      if (!optRes.ok) throw new Error(typeof optBody.detail === "string" ? optBody.detail : t.errorGeneric);
+      const publicKey = publicKeyOptionsFromServer(optBody.options);
+      const cred = await navigator.credentials.create({ publicKey });
+      const verRes = await fetch("/v1/web/passkey/register/verify", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          challenge_key: optBody.challenge_key,
+          credential: credentialToJSON(cred),
+        }),
+      });
+      const verBody = await verRes.json().catch(() => ({}));
+      if (!verRes.ok) throw new Error(typeof verBody.detail === "string" ? verBody.detail : t.errorGeneric);
+      return verBody;
+    }
+
+    document.getElementById("navCreate").addEventListener("click", () => showPanel("create"));
+    document.getElementById("navLogin").addEventListener("click", () => showPanel("login"));
+    navAccount.addEventListener("click", async () => {
+      await refreshMe();
+      showPanel("account");
+    });
+
     createBtn.addEventListener("click", async () => {
-      errorEl.classList.remove("visible");
-      errorEl.textContent = "";
+      clearMsgs();
       createBtn.disabled = true;
       const token = randomTokenHex();
       try {
         const res = await fetch("/v1/accounts", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
           body: JSON.stringify({ device_token: token }),
         });
         const body = await res.json().catch(() => ({}));
         if (!res.ok) {
-          if (res.status === 429) {
-            throw new Error(t.errorRateLimit);
-          }
+          if (res.status === 429) throw new Error(t.errorRateLimit);
           const detail = body.detail;
           throw new Error(typeof detail === "string" ? detail : (t.errorGeneric + " (HTTP " + res.status + ")"));
         }
@@ -294,11 +598,155 @@
         document.getElementById("urlValue").textContent = window.location.origin;
         resultEl.classList.add("visible");
         createBtn.textContent = t.createdBtn;
+        await refreshMe();
       } catch (err) {
-        errorEl.textContent = String(err.message || err);
-        errorEl.classList.add("visible");
+        showError(String(err.message || err));
         createBtn.disabled = false;
       }
+    });
+
+    document.getElementById("registerPasskeyBtn").addEventListener("click", async () => {
+      clearMsgs();
+      try {
+        const verBody = await registerPasskeyWithUsername(document.getElementById("regUsername").value.trim());
+        showOk(verBody.username || "ok");
+        await refreshMe();
+        showPanel("account");
+      } catch (err) {
+        showError(String(err.message || err));
+      }
+    });
+
+    document.getElementById("acctRegisterPasskeyBtn").addEventListener("click", async () => {
+      clearMsgs();
+      try {
+        const verBody = await registerPasskeyWithUsername(document.getElementById("acctRegUsername").value.trim());
+        showOk(verBody.username || "ok");
+        await refreshMe();
+      } catch (err) {
+        showError(String(err.message || err));
+      }
+    });
+
+    document.getElementById("recoverBtn").addEventListener("click", async () => {
+      clearMsgs();
+      const user_id = document.getElementById("recoverUserId").value.trim();
+      const device_token = document.getElementById("recoverToken").value.trim();
+      try {
+        const res = await fetch("/v1/web/session/bootstrap", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_id, device_token }),
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(typeof body.detail === "string" ? body.detail : t.errorGeneric);
+        await refreshMe();
+        showPanel("account");
+      } catch (err) {
+        showError(String(err.message || err));
+      }
+    });
+
+    document.getElementById("loginBtn").addEventListener("click", async () => {
+      clearMsgs();
+      if (!window.PublicKeyCredential) {
+        showError(t.needPasskey);
+        return;
+      }
+      const username = document.getElementById("loginUsername").value.trim();
+      try {
+        const optRes = await fetch("/v1/web/passkey/login/options", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username }),
+        });
+        const optBody = await optRes.json().catch(() => ({}));
+        if (!optRes.ok) throw new Error(typeof optBody.detail === "string" ? optBody.detail : t.errorGeneric);
+        const publicKey = publicKeyOptionsFromServer(optBody.options);
+        const cred = await navigator.credentials.get({ publicKey });
+        const verRes = await fetch("/v1/web/passkey/login/verify", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            challenge_key: optBody.challenge_key,
+            credential: credentialToJSON(cred),
+          }),
+        });
+        const verBody = await verRes.json().catch(() => ({}));
+        if (!verRes.ok) throw new Error(typeof verBody.detail === "string" ? verBody.detail : t.errorGeneric);
+        await refreshMe();
+        showPanel("account");
+      } catch (err) {
+        showError(String(err.message || err));
+      }
+    });
+
+    document.getElementById("newTokenBtn").addEventListener("click", async () => {
+      clearMsgs();
+      try {
+        const res = await fetch("/v1/web/devices", { method: "POST", credentials: "same-origin" });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(typeof body.detail === "string" ? body.detail : t.errorGeneric);
+        document.getElementById("newTokenValue").textContent = body.device_token;
+        document.getElementById("newTokenBox").hidden = false;
+      } catch (err) {
+        showError(String(err.message || err));
+      }
+    });
+
+    async function doLogout() {
+      await fetch("/v1/web/logout", { method: "POST", credentials: "same-origin" });
+      document.getElementById("newTokenBox").hidden = true;
+      document.getElementById("secureAgain").hidden = true;
+      navAccount.hidden = true;
+      navLogout.hidden = true;
+      showPanel("create");
+    }
+
+    navLogout.addEventListener("click", () => { doLogout(); });
+
+    document.getElementById("logoutBtn").addEventListener("click", () => { doLogout(); });
+
+    async function uploadFile(file) {
+      clearMsgs();
+      const fd = new FormData();
+      fd.append("file", file, file.name);
+      const res = await fetch("/v1/web/upload", {
+        method: "POST",
+        credentials: "same-origin",
+        body: fd,
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const detail = body.detail;
+        throw new Error(typeof detail === "string" ? detail : (t.errorGeneric + " (HTTP " + res.status + ")"));
+      }
+      showOk(t.uploadOk + " " + body.filename);
+      await refreshMe();
+    }
+
+    const dropZone = document.getElementById("dropZone");
+    const fileInput = document.getElementById("fileInput");
+    dropZone.addEventListener("dragover", (e) => { e.preventDefault(); dropZone.classList.add("drag"); });
+    dropZone.addEventListener("dragleave", () => dropZone.classList.remove("drag"));
+    dropZone.addEventListener("drop", async (e) => {
+      e.preventDefault();
+      dropZone.classList.remove("drag");
+      const file = e.dataTransfer.files && e.dataTransfer.files[0];
+      if (!file) return;
+      try { await uploadFile(file); } catch (err) { showError(String(err.message || err)); }
+    });
+    fileInput.addEventListener("change", async () => {
+      const file = fileInput.files && fileInput.files[0];
+      if (!file) return;
+      try { await uploadFile(file); } catch (err) { showError(String(err.message || err)); }
+      fileInput.value = "";
+    });
+
+    refreshMe().then((me) => {
+      if (me) showPanel("account");
     });
   </script>
 </body>

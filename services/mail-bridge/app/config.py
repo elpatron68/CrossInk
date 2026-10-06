@@ -52,6 +52,20 @@ class Settings(BaseSettings):
         validation_alias="PLAUSIBLE_SCRIPT_URL",
     )
 
+    # WebAuthn / passkey (optional account recovery in the browser).
+    webauthn_rp_id: str = Field(default="localhost", validation_alias="WEBAUTHN_RP_ID")
+    webauthn_origin: str = Field(default="http://localhost:8080", validation_alias="WEBAUTHN_ORIGIN")
+    webauthn_rp_name: str = Field(default="CrossInk Mail Bridge", validation_alias="WEBAUTHN_RP_NAME")
+    web_session_days: int = Field(default=14, validation_alias="WEB_SESSION_DAYS")
+
+    # Native web upload (stage 2/3).
+    upload_max_bytes: int = Field(default=80_000_000, validation_alias="UPLOAD_MAX_BYTES")
+    upload_rate_limit_per_hour: int = Field(default=30, validation_alias="UPLOAD_RATE_LIMIT_PER_HOUR")
+
+    # Calibre conversion (stage 3).
+    convert_enabled: bool = Field(default=True, validation_alias="CONVERT_ENABLED")
+    convert_timeout_seconds: int = Field(default=120, validation_alias="CONVERT_TIMEOUT_SECONDS")
+
     host: str = Field(default="0.0.0.0", validation_alias="HOST")
     port: int = Field(default=8080, validation_alias="PORT")
 

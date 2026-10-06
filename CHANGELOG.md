@@ -10,10 +10,15 @@
 - Mail bridge: delete never-synced accounts after 7 days and inactive accounts after 365 days; rate-limit account creation per IP (proxy-aware).
 - Mail bridge Docker image: non-root container, healthcheck, `./start-docker.sh` for WSL Compose bring-up.
 - Mail bridge pairing page favicon (simple envelope SVG).
+- Mail bridge web app Phase 3: optional username + passkey login, issue a new device token from the browser, upload EPUB/TXT into the device queue, and convert MOBI/AZW3/DOCX to EPUB via Calibre.
 
 ### Fixed
 
+- Device web settings: password/token fields (including Email Sync device token) keep their real value after load, can be shown via a Show/Hide control, and are no longer wiped when another setting is saved while the browser cleared the masked field.
 - Mail bridge: sanitize attachment filenames that contain CR/LF from MIME header folding so device downloads no longer fail with “Download failed”.
+- Email Sync: default bare bridge hosts to `https://`, follow HTTP→HTTPS redirects, and use a longer request timeout so Force-SSL reverse proxies and brief IMAP polls are less likely to surface as “Couldn't reach the mail bridge”.
+- Mail bridge: bound IMAP socket timeout so an on-demand poll cannot hang `/v1/pending` indefinitely.
+- wolfSSL: enable P-384 ECC and SHA-384 so HTTPS to Let's Encrypt ECDSA (YE2) hosts such as the mail bridge succeeds on device.
 
 ## [v1.6.1] - 2026-10-03
 

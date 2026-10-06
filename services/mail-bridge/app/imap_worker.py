@@ -97,10 +97,15 @@ class ImapWorker:
             self._stop.wait(self.settings.poll_seconds)
 
     def _connect(self) -> imaplib.IMAP4:
+        # Bound socket so an on-demand /v1/pending poll cannot hang the device
+        # past its HTTP timeout when the IMAP host is slow or unreachable.
+        timeout = 20
         if self.settings.imap_ssl:
-            client: imaplib.IMAP4 = imaplib.IMAP4_SSL(self.settings.imap_host, self.settings.imap_port)
+            client: imaplib.IMAP4 = imaplib.IMAP4_SSL(
+                self.settings.imap_host, self.settings.imap_port, timeout=timeout
+            )
         else:
-            client = imaplib.IMAP4(self.settings.imap_host, self.settings.imap_port)
+            client = imaplib.IMAP4(self.settings.imap_host, self.settings.imap_port, timeout=timeout)
         client.login(self.settings.imap_user, self.settings.imap_pass)
         return client
 

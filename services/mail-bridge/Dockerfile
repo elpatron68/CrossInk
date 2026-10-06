@@ -5,10 +5,16 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     DATA_DIR=/data \
-    PORT=8080
+    PORT=8080 \
+    CONVERT_ENABLED=true
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+
+# Calibre provides ebook-convert for MOBI/AZW3/DOCX → EPUB (stage 3).
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends calibre \
+    && rm -rf /var/lib/apt/lists/* \
+    && pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app
 

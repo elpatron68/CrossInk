@@ -23,8 +23,8 @@ def client_ip(request: Request, *, trust_proxy: bool) -> str:
     return "unknown"
 
 
-class SignupRateLimiter:
-    """Process-local sliding 1-hour window keyed by client IP."""
+class SlidingWindowRateLimiter:
+    """Process-local sliding 1-hour window keyed by an arbitrary string."""
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
@@ -35,20 +35,24 @@ class SignupRateLimiter:
         for key in empty:
             del self._hits[key]
 
-    def allow(self, ip: str, *, limit_per_hour: int) -> bool:
+    def allow(self, key: str, *, limit_per_hour: int) -> bool:
         if limit_per_hour <= 0:
             return True
         now = time.monotonic()
         window = 3600.0
         with self._lock:
-            q = self._hits[ip]
+            q = self._hits[key]
             while q and (now - q[0]) > window:
                 q.popleft()
             if not q:
-                self._hits.pop(ip, None)
-                q = self._hits[ip]
+                self._hits.pop(key, None)
+                q = self._hits[key]
             if len(q) >= limit_per_hour:
                 self._prune_empty_keys()
                 return False
             q.append(now)
             return True
+
+
+# Back-compat alias used by existing signup routes/tests.
+SignupRateLimiter = SlidingWindowRateLimiter

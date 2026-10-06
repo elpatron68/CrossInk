@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import AsyncIterator
 
-from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi import Depends, FastAPI, HTTPException, Request, Response, status
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -16,8 +16,10 @@ from .cleanup import OrphanCleanupWorker
 from .config import Settings, get_settings
 from .imap_worker import ImapWorker
 from .mime_extract import safe_filename
-from .rate_limit import SignupRateLimiter, client_ip
+from .rate_limit import SlidingWindowRateLimiter, client_ip
 from .store import ItemStore
+from .web_routes import create_web_router, _set_session_cookie
+from .webauthn_flow import ChallengeStore
 
 LOG = logging.getLogger("mail-bridge")
 
@@ -70,11 +72,15 @@ def create_app(settings: Settings | None = None, store: ItemStore | None = None)
         orphan_cleanup.stop()
         worker.stop()
 
-    rate_limiter = SignupRateLimiter()
+    rate_limiter = SlidingWindowRateLimiter()
+    upload_limiter = SlidingWindowRateLimiter()
+    challenges = ChallengeStore()
     app = FastAPI(title="CrossInk Mail Bridge", version=__version__, lifespan=lifespan)
     app.state.settings = settings
     app.state.store = store
     app.state.rate_limiter = rate_limiter
+    app.state.upload_limiter = upload_limiter
+    app.state.challenges = challenges
     app.state.worker = worker
     app.state.orphan_cleanup = orphan_cleanup
     app.dependency_overrides[get_settings] = lambda: settings
@@ -88,7 +94,7 @@ def create_app(settings: Settings | None = None, store: ItemStore | None = None)
         )
 
     @app.post("/v1/accounts", response_model=CreateAccountOut, status_code=status.HTTP_201_CREATED)
-    def create_account(body: CreateAccountIn, request: Request) -> CreateAccountOut:
+    def create_account(body: CreateAccountIn, request: Request, response: Response) -> CreateAccountOut:
         ip = client_ip(request, trust_proxy=settings.trust_proxy)
         if not rate_limiter.allow(ip, limit_per_hour=settings.signup_rate_limit_per_hour):
             raise HTTPException(
@@ -102,6 +108,9 @@ def create_app(settings: Settings | None = None, store: ItemStore | None = None)
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
         except LookupError as exc:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+        # Short-lived browser session so the user can optionally register a passkey.
+        session_id = store.create_web_session(created.user_id, days=settings.web_session_days)
+        _set_session_cookie(response, session_id, settings=settings)
         return CreateAccountOut(user_id=created.user_id, mail_local=created.mail_local, email=created.email)
 
     @app.get("/v1/pending", response_model=list[PendingItemOut])
@@ -146,6 +155,8 @@ def create_app(settings: Settings | None = None, store: ItemStore | None = None)
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not found")
         return JSONResponse({"ok": True, "id": item_id})
 
+    app.include_router(create_web_router())
+
     @app.get("/", response_model=None)
     def pairing_page() -> HTMLResponse:
         index = STATIC_DIR / "index.html"
@@ -162,7 +173,13 @@ def create_app(settings: Settings | None = None, store: ItemStore | None = None)
                 "  <!-- PLAUSIBLE -->"
             )
             html = html.replace("<!-- PLAUSIBLE -->", snippet, 1)
-        return HTMLResponse(html)
+        return HTMLResponse(
+            html,
+            headers={
+                "Cache-Control": "no-store, no-cache, must-revalidate",
+                "Pragma": "no-cache",
+            },
+        )
 
     @app.get("/favicon.ico", include_in_schema=False)
     def favicon() -> FileResponse:

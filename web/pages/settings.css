@@ -92,6 +92,31 @@ h2 {
     .setting-control input[type="password"] {
       width: 220px;
     }
+.setting-control .password-field {
+      display: inline-flex;
+      align-items: stretch;
+      gap: 6px;
+      max-width: 100%;
+    }
+.setting-control .password-field input {
+      width: 220px;
+      flex: 1 1 auto;
+    }
+.setting-control .password-reveal {
+      flex: 0 0 auto;
+      padding: 8px 10px;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      background: var(--card-bg);
+      color: var(--label-color);
+      cursor: pointer;
+      font-size: 0.85em;
+      font-weight: 600;
+}
+.setting-control .password-reveal:hover {
+      border-color: var(--accent-color);
+      color: var(--accent-color);
+}
 .setting-control input[type="number"] {
       width: 80px;
     }

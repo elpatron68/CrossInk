@@ -140,6 +140,10 @@ EmailSyncClient::Error requestJson(const std::string& url, const char* method, c
 #else
   freeink::SecureHttpClient http;
   http.setInsecure();
+  // Force-SSL proxies (nginx Proxy Manager) answer HTTP with 301 → HTTPS.
+  http.setFollowRedirects(3);
+  // IMAP on-demand poll can add a bit of latency behind a public reverse proxy.
+  http.setTimeout(30000);
   if (!http.begin(url)) {
     LOG_ERR("EmailSync", "Bad URL: %s", url.c_str());
     return EmailSyncClient::NETWORK_ERROR;
@@ -180,6 +184,7 @@ EmailSyncClient::Error requestJson(const std::string& url, const char* method, c
   }
   if (httpCode <= 0) {
     http.end();
+    LOG_ERR("EmailSync", "Transport failed for %s method=%s code=%d", url.c_str(), method, httpCode);
     return EmailSyncClient::NETWORK_ERROR;
   }
   http.end();
