@@ -298,8 +298,18 @@
     <section id="panelAccount" class="panel">
       <p class="lede" data-i18n="accountLede"></p>
       <div class="field">
+        <label data-i18n="labelUrl">Bridge URL</label>
+        <div class="row">
+          <div class="value" id="meUrl"></div>
+          <button class="secondary" type="button" data-copy="meUrl" data-i18n="copy">Copy</button>
+        </div>
+      </div>
+      <div class="field">
         <label data-i18n="labelEmail">Email alias</label>
-        <div class="value" id="meEmail"></div>
+        <div class="row">
+          <div class="value" id="meEmail"></div>
+          <button class="secondary" type="button" data-copy="meEmail" data-i18n="copy">Copy</button>
+        </div>
       </div>
       <div class="field">
         <label data-i18n="labelUsername">Username</label>
@@ -645,6 +655,7 @@
         return null;
       }
       const body = await res.json();
+      document.getElementById("meUrl").textContent = window.location.origin;
       document.getElementById("meEmail").textContent = body.email || "";
       document.getElementById("meUsername").textContent = body.username || "—";
       document.getElementById("mePending").textContent = String(body.pending_count ?? 0);

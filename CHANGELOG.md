@@ -16,10 +16,12 @@
 
 ### Changed
 
+- Mail bridge Account page shows the Bridge URL and email alias with Copy buttons (same values for the reader Email Sync settings / send-to address).
 - Mail bridge web UI uses a flatter e-ink look: paper background, high-contrast text, and burgundy only for the primary action and active navigation.
 
 ### Fixed
 
+- Mail bridge IMAP: also poll non-special folders (e.g. Migadu plus-alias folders like `04awk1snig`), not only INBOX, so emailed books are ingested.
 - Mail bridge PWA: answer HEAD for `/` and the manifest/service-worker routes, and ship 8-bit PNG icons so Chrome install checks no longer fail with “Page has no manifest <link> URL”.
 - Mail bridge PWA: stop reverse proxies from caching a stale service worker (`no-store` + `updateViaCache: "none"`), use `/manifest.json`, and always `respondWith(fetch)` so Install completes in Chrome/Vivaldi.
 - Mail bridge web UI: keep the card within the phone viewport (flex `max-width` / `min-width: 0`) so titles and copy no longer overflow horizontally.
