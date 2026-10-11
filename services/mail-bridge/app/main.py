@@ -18,6 +18,7 @@ from .imap_worker import ImapWorker
 from .mime_extract import safe_filename
 from .rate_limit import SlidingWindowRateLimiter, client_ip
 from .store import ItemStore
+from .plausible import EVENT_ACCOUNT_CREATED, EVENT_EBOOK_SYNCED, track_event
 from .web_routes import create_web_router, _set_session_cookie
 from .webauthn_flow import ChallengeStore
 
@@ -111,6 +112,7 @@ def create_app(settings: Settings | None = None, store: ItemStore | None = None)
         # Short-lived browser session so the user can optionally register a passkey.
         session_id = store.create_web_session(created.user_id, days=settings.web_session_days)
         _set_session_cookie(response, session_id, settings=settings)
+        track_event(settings, EVENT_ACCOUNT_CREATED, path="/")
         return CreateAccountOut(user_id=created.user_id, mail_local=created.mail_local, email=created.email)
 
     @app.get("/v1/pending", response_model=list[PendingItemOut])
@@ -151,26 +153,70 @@ def create_app(settings: Settings | None = None, store: ItemStore | None = None)
 
     @app.post("/v1/items/{item_id}/ack")
     def item_ack(item_id: str, user_id: str = Depends(require_device_token)) -> JSONResponse:
-        if not store.ack(item_id, user_id=user_id, delete_files=settings.delete_on_ack):
+        result = store.ack(item_id, user_id=user_id, delete_files=settings.delete_on_ack)
+        if result is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not found")
+        if result == "new":
+            track_event(settings, EVENT_EBOOK_SYNCED, path="/v1/items/ack")
         return JSONResponse({"ok": True, "id": item_id})
 
     app.include_router(create_web_router())
 
-    @app.get("/", response_model=None)
+    # GET+HEAD: Chromium probes manifests/pages with HEAD; GET-only → 405 breaks install checks.
+    @app.api_route("/", methods=["GET", "HEAD"], response_model=None)
     def pairing_page() -> HTMLResponse:
         return _static_html_page("index.html", settings=settings)
 
-    @app.get("/help", response_model=None)
+    @app.api_route("/help", methods=["GET", "HEAD"], response_model=None)
     def help_page() -> HTMLResponse:
         return _static_html_page("help.html", settings=settings)
 
-    @app.get("/favicon.ico", include_in_schema=False)
+    @app.api_route("/favicon.ico", methods=["GET", "HEAD"], include_in_schema=False)
     def favicon() -> FileResponse:
         path = STATIC_DIR / "favicon.svg"
         if not path.is_file():
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Favicon missing")
         return FileResponse(path, media_type="image/svg+xml")
+
+    def _web_manifest() -> FileResponse:
+        path = STATIC_DIR / "manifest.webmanifest"
+        if not path.is_file():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Manifest missing")
+        return FileResponse(
+            path,
+            media_type="application/manifest+json",
+            headers={
+                "Cache-Control": "no-store, no-cache, must-revalidate",
+                "Pragma": "no-cache",
+            },
+        )
+
+    @app.api_route("/manifest.webmanifest", methods=["GET", "HEAD"], include_in_schema=False)
+    def web_manifest() -> FileResponse:
+        return _web_manifest()
+
+    @app.api_route("/manifest.json", methods=["GET", "HEAD"], include_in_schema=False)
+    def web_manifest_json_alias() -> FileResponse:
+        return _web_manifest()
+
+    @app.api_route("/sw.js", methods=["GET", "HEAD"], include_in_schema=False)
+    def service_worker() -> FileResponse:
+        path = STATIC_DIR / "sw.js"
+        if not path.is_file():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Service worker missing")
+        return FileResponse(
+            path,
+            media_type="application/javascript",
+            headers={
+                # Proxies (OpenResty/NPM) often cache *.js aggressively and can
+                # strand browsers on a stale empty SW that breaks install.
+                "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+                "Pragma": "no-cache",
+                "Expires": "0",
+                "X-Accel-Expires": "0",
+                "Service-Worker-Allowed": "/",
+            },
+        )
 
     if STATIC_DIR.is_dir():
         app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
