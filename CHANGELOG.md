@@ -16,6 +16,7 @@
 
 ### Changed
 
+- Mail bridge Create/Account pages warn that Email Sync needs the modified CrossInk firmware, with a link to Help firmware downloads.
 - Mail bridge Help page links Email Sync preview firmware downloads from the GitHub prerelease (`email-sync-preview`).
 - Mail bridge Account page shows the Bridge URL and email alias with Copy buttons (same values for the reader Email Sync settings / send-to address).
 - Mail bridge web UI uses a flatter e-ink look: paper background, high-contrast text, and burgundy only for the primary action and active navigation.
