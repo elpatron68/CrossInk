@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import imaplib
 import logging
+import re
 import threading
 from email import message_from_bytes
 from email.utils import parsedate_to_datetime
@@ -14,6 +15,71 @@ from .recipients import resolve_user_mail_local
 from .store import ItemStore
 
 LOG = logging.getLogger("mail-bridge.imap")
+
+# Migadu (and some sieve setups) file plus-alias mail into a folder named like
+# the +local part instead of INBOX. Poll those too; skip mailbox specials.
+_LIST_LINE_RE = re.compile(
+    r"^\((?P<flags>.*)\)\s+(?P<delim>\S+)\s+(?P<name>.+)$"
+)
+_SKIP_FOLDER_FLAGS = frozenset(
+    {
+        "\\noselect",
+        "\\drafts",
+        "\\sent",
+        "\\trash",
+        "\\junk",
+        "\\spam",
+        "\\archive",
+    }
+)
+_SKIP_FOLDER_NAMES = frozenset(
+    {
+        "drafts",
+        "sent",
+        "trash",
+        "junk",
+        "spam",
+        "archive",
+        "processed",
+    }
+)
+
+
+def parse_list_folder_name(line: str) -> str | None:
+    """Return the mailbox name from an IMAP LIST response line, or None."""
+    m = _LIST_LINE_RE.match(line.strip())
+    if not m:
+        return None
+    flags = {f.lower() for f in m.group("flags").split() if f}
+    if flags & _SKIP_FOLDER_FLAGS:
+        return None
+    name = m.group("name").strip()
+    if len(name) >= 2 and name[0] == '"' and name[-1] == '"':
+        name = name[1:-1].replace('\\"', '"')
+    if name.lower() in _SKIP_FOLDER_NAMES:
+        return None
+    return name
+
+
+def folders_to_poll(list_lines: list[str], *, primary: str, processed_folder: str) -> list[str]:
+    """Primary folder first, then other selectable non-special folders."""
+    ordered: list[str] = []
+    seen: set[str] = set()
+    skip_extra = {processed_folder.lower()} if processed_folder else set()
+
+    def add(name: str) -> None:
+        key = name.lower()
+        if key in seen or key in skip_extra:
+            return
+        seen.add(key)
+        ordered.append(name)
+
+    add(primary)
+    for line in list_lines:
+        name = parse_list_folder_name(line)
+        if name:
+            add(name)
+    return ordered
 
 
 def dispose_uid(
@@ -114,25 +180,44 @@ class ImapWorker:
         client = self._connect()
         added = 0
         try:
-            typ, _ = client.select(self.settings.imap_folder, readonly=False)
-            if typ != "OK":
-                LOG.error("Failed to select folder %s", self.settings.imap_folder)
-                return 0
-
-            typ, data = client.uid("SEARCH", None, "UNSEEN")
-            if typ != "OK" or not data or not data[0]:
-                return 0
-
-            uids = data[0].split()
-            LOG.info("Found %d unseen message(s)", len(uids))
-            for uid in uids:
-                uid_str = uid.decode("ascii") if isinstance(uid, bytes) else str(uid)
-                added += self._process_uid(client, uid_str)
+            typ, list_data = client.list()
+            list_lines: list[str] = []
+            if typ == "OK" and list_data:
+                for raw in list_data:
+                    if isinstance(raw, bytes):
+                        list_lines.append(raw.decode("utf-8", "replace"))
+                    elif isinstance(raw, str):
+                        list_lines.append(raw)
+            folders = folders_to_poll(
+                list_lines,
+                primary=self.settings.imap_folder,
+                processed_folder=self.settings.processed_folder,
+            )
+            for folder in folders:
+                added += self._poll_folder(client, folder)
         finally:
             try:
                 client.logout()
             except Exception:
                 pass
+        return added
+
+    def _poll_folder(self, client: imaplib.IMAP4, folder: str) -> int:
+        typ, _ = client.select(folder, readonly=False)
+        if typ != "OK":
+            LOG.error("Failed to select folder %s", folder)
+            return 0
+
+        typ, data = client.uid("SEARCH", None, "UNSEEN")
+        if typ != "OK" or not data or not data[0]:
+            return 0
+
+        uids = data[0].split()
+        LOG.info("Found %d unseen message(s) in %s", len(uids), folder)
+        added = 0
+        for uid in uids:
+            uid_str = uid.decode("ascii") if isinstance(uid, bytes) else str(uid)
+            added += self._process_uid(client, uid_str)
         return added
 
     def _discard(self, client: imaplib.IMAP4, uid: str, reason: str) -> None:

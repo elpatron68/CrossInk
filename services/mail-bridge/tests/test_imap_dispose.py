@@ -46,3 +46,19 @@ def test_dispose_move_falls_back_to_delete() -> None:
     client.copy_ok = False
     assert dispose_uid(client, "3", mode="move", folder="Processed") == "delete"
     assert ("uid", "STORE", "3", "+FLAGS", "(\\Deleted)") in client.commands
+
+
+def test_folders_to_poll_includes_plus_alias_folder() -> None:
+    from app.imap_worker import folders_to_poll
+
+    lines = [
+        r'(\HasNoChildren \Subscribed) "/" "04awk1snig"',
+        r'(\HasNoChildren \Junk \Subscribed) "/" "Junk"',
+        r'(\HasNoChildren \Subscribed) "/" INBOX',
+        r'(\HasNoChildren \Trash \Subscribed) "/" "Trash"',
+        r'(\HasNoChildren \Drafts \Subscribed) "/" "Drafts"',
+    ]
+    assert folders_to_poll(lines, primary="INBOX", processed_folder="Processed") == [
+        "INBOX",
+        "04awk1snig",
+    ]
