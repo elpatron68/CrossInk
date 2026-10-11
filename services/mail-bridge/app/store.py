@@ -545,8 +545,13 @@ class ItemStore:
             path=Path(row["path"]),
         )
 
-    def ack(self, item_id: str, user_id: str, *, delete_files: bool = False) -> bool:
-        """Mark pending item delivered. Idempotent if already delivered. Returns False if missing.
+    def ack(self, item_id: str, user_id: str, *, delete_files: bool = False) -> str | None:
+        """Mark pending item delivered. Idempotent if already delivered.
+
+        Returns:
+          - ``"new"`` if status changed pending → delivered
+          - ``"already"`` if it was already delivered
+          - ``None`` if the item is missing for this user
 
         When delete_files is True, remove the blob and the DB row after a successful ack
         (also cleans up an already-delivered row on repeat ack).
@@ -557,8 +562,9 @@ class ItemStore:
                 (item_id, user_id),
             ).fetchone()
             if row is None:
-                return False
-            if row["status"] != "delivered":
+                return None
+            newly = row["status"] != "delivered"
+            if newly:
                 conn.execute(
                     "UPDATE items SET status = 'delivered' WHERE id = ? AND user_id = ?",
                     (item_id, user_id),
@@ -571,7 +577,7 @@ class ItemStore:
                 except OSError:
                     pass
                 conn.execute("DELETE FROM items WHERE id = ? AND user_id = ?", (item_id, user_id))
-            return True
+            return "new" if newly else "already"
 
     def touch_device_for_token(self, device_token: str) -> None:
         token_hash = hash_device_token(device_token.strip())

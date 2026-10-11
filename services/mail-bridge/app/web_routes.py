@@ -17,6 +17,7 @@ from .convert import (
     sha256_bytes,
 )
 from .mime_extract import safe_filename
+from .plausible import EVENT_EBOOK_UPLOADED, track_event
 from .rate_limit import SlidingWindowRateLimiter
 from .store import ItemStore, validate_username
 from .webauthn_flow import (
@@ -363,6 +364,12 @@ def create_web_router() -> APIRouter:
             content_type=final_type,
             imap_uid=None,
             user_id=user_id,
+        )
+        track_event(
+            settings,
+            EVENT_EBOOK_UPLOADED,
+            path="/v1/web/upload",
+            props={"source": "upload", "converted": "1" if converted else "0"},
         )
         return {
             "ok": True,

@@ -3,8 +3,14 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#2c5f4a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Mail Bridge" />
   <title>Help · CrossInk Mail Bridge</title>
   <link rel="icon" href="/static/favicon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png" />
+  <link rel="manifest" href="/manifest.json" />
   <!-- PLAUSIBLE -->
   <style>
     :root {
@@ -15,8 +21,17 @@
       --border: #d5cfc3;
     }
     * { box-sizing: border-box; }
+    html {
+      width: 100%;
+      max-width: 100%;
+      overflow-x: hidden;
+      -webkit-text-size-adjust: 100%;
+      text-size-adjust: 100%;
+    }
     body {
       margin: 0;
+      width: 100%;
+      max-width: 100%;
       min-height: 100vh;
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       color: var(--ink);
@@ -24,19 +39,24 @@
       display: flex;
       align-items: flex-start;
       justify-content: center;
-      padding: 2rem 1rem;
+      padding: 1.25rem 0.85rem;
+      overflow-x: hidden;
     }
     main {
-      width: min(40rem, 100%);
+      width: 100%;
+      max-width: 40rem;
+      min-width: 0;
       background: var(--bg);
       border: 1px solid var(--border);
       border-radius: 6px;
-      padding: 2rem 1.75rem;
+      padding: 1.5rem 1.1rem;
     }
     h1 {
       margin: 0 0 0.35rem;
-      font-size: 1.75rem;
+      font-size: clamp(1.35rem, 4.5vw, 1.75rem);
       letter-spacing: -0.02em;
+      line-height: 1.2;
+      overflow-wrap: anywhere;
     }
     h1 a.brand-link {
       color: inherit;
@@ -108,8 +128,14 @@
       border-left: 3px solid var(--mark);
       border-radius: 6px;
       line-height: 1.45;
+      overflow-wrap: anywhere;
     }
     .muted { color: var(--muted); }
+    p, li, .lede { overflow-wrap: anywhere; }
+    @media (min-width: 480px) {
+      body { padding: 2rem 1rem; }
+      main { padding: 2rem 1.75rem; }
+    }
   </style>
 </head>
 <body>
@@ -233,6 +259,13 @@
       if (t[key] != null) el.textContent = t[key];
     });
     document.title = t.title;
+
+    if (window.isSecureContext && "serviceWorker" in navigator) {
+      navigator.serviceWorker
+        .register("/sw.js?v=3", { updateViaCache: "none", scope: "/" })
+        .then((reg) => reg.update())
+        .catch(() => {});
+    }
   </script>
 </body>
 </html>

@@ -2,6 +2,8 @@
 
 ### Added
 
+- Mail bridge Plausible analytics: configurable `PLAUSIBLE_DOMAIN` / `PLAUSIBLE_SCRIPT_URL`, plus custom goals for account created, ebook received (mail), uploaded, and reader-synced.
+- Mail bridge web UI is installable as a PWA (Homescreen / standalone; online-only, no offline cache).
 - Email Sync: download `.epub` and `.txt` books from a self-hosted mail bridge (IMAP ingest + one-tap HTTPS pull). Configure bridge URL and device token under Settings → Email Sync (on-device or the device web portal), or start from File Transfer / a shortcut.
 - Mail bridge multi-tenant pairing: open web UI creates a plus-alias inbox (`bookbridge+…@domain` by default) and a browser-generated device token; IMAP routes attachments per account.
 - Mail bridge cleanup: delete processed IMAP mail (and unknown-alias mail), purge undownloaded queue items after a configurable retention window, and remove blobs on device ack.
@@ -18,6 +20,9 @@
 
 ### Fixed
 
+- Mail bridge PWA: answer HEAD for `/` and the manifest/service-worker routes, and ship 8-bit PNG icons so Chrome install checks no longer fail with “Page has no manifest <link> URL”.
+- Mail bridge PWA: stop reverse proxies from caching a stale service worker (`no-store` + `updateViaCache: "none"`), use `/manifest.json`, and always `respondWith(fetch)` so Install completes in Chrome/Vivaldi.
+- Mail bridge web UI: keep the card within the phone viewport (flex `max-width` / `min-width: 0`) so titles and copy no longer overflow horizontally.
 - Mail bridge web UI: navigation shows Create/Sign in or Account/Sign out depending on session, not both pairs at once.
 - Mail bridge web UI: Account/Sign out appear only after passkey login; a cookie after account create no longer looks like a signed-in session.
 - Mail bridge web UI: clearer copy that username/passkey is optional and mainly useful for reopening the browser profile (e.g. uploads), not for Email Sync itself.

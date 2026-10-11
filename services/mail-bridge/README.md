@@ -37,6 +37,12 @@ device token; copy the email alias + token into the reader
 (Settings → Email Sync). Optionally register a **username + passkey** on the
 same page so you can sign in later, issue a new device token, and upload books.
 
+Under HTTPS (production), the pairing page is an **installable PWA**: Chrome/Edge
+offer “Install app”; iOS Safari → Share → Add to Home Screen. The service worker
+exists only for installability — there is no offline mode. If a reverse proxy
+caches `/sw.js`, disable caching for that path (or rely on `Cache-Control: no-store`
+from the app); a stale empty SW breaks Install.
+
 On WSL2, devices on the LAN typically need a Windows `netsh interface portproxy`
 from the host LAN IP `:8080` to the WSL IP `:8080`. Use that Windows LAN address
 as the Bridge URL on the reader. Behind nginx Proxy Manager, set `TRUST_PROXY=true`
@@ -51,6 +57,8 @@ production, e.g. `ci-bridge.elpatron.me`). Local HTTP works with
 | Method | Path | Auth | Purpose |
 | --- | --- | --- | --- |
 | `GET` | `/` | no | Pairing / web app UI |
+| `GET` | `/manifest.json` | no | PWA web app manifest (also `/manifest.webmanifest`) |
+| `GET` | `/sw.js` | no | Installability-only service worker (`Cache-Control: no-store`) |
 | `GET` | `/v1/health` | no | Liveness |
 | `POST` | `/v1/accounts` | no | Create account (`device_token` from browser); sets web session cookie |
 | `GET` | `/v1/pending` | Bearer | List pending items (triggers IMAP poll) |
@@ -94,7 +102,9 @@ Retention / cleanup (see `.env.example`):
 - `ACCOUNT_INACTIVE_DAYS=365` deletes accounts with no sync and no received mail for that long (0 disables)
 - `SIGNUP_RATE_LIMIT_PER_HOUR=5` caps `POST /v1/accounts` per client IP per rolling hour (429 when exceeded; 0 disables)
 - `TRUST_PROXY=true` uses `X-Forwarded-For` / `X-Real-IP` for that IP when the bridge sits behind nginx or similar
-- Optional `PLAUSIBLE_DOMAIN` injects Plausible Analytics into the pairing page
+- Optional `PLAUSIBLE_DOMAIN` + `PLAUSIBLE_SCRIPT_URL` inject Plausible into
+  pairing/help pages and send server-side custom events: `Account Created`,
+  `Ebook Received` (IMAP), `Ebook Uploaded` (web), `Ebook Synced` (device ack)
 - `WEBAUTHN_RP_ID` / `WEBAUTHN_ORIGIN` for optional username+passkey login (HTTPS required in production)
 - `UPLOAD_MAX_BYTES` / `UPLOAD_RATE_LIMIT_PER_HOUR` for browser uploads into the same queue
 - `CONVERT_ENABLED` / `CONVERT_TIMEOUT_SECONDS` for Calibre `ebook-convert` (MOBI/AZW3/DOCX → EPUB; PDF unsupported)

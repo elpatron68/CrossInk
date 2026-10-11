@@ -9,6 +9,7 @@ from typing import Callable
 
 from .config import Settings
 from .mime_extract import extract_attachments
+from .plausible import EVENT_EBOOK_RECEIVED, track_event
 from .recipients import resolve_user_mail_local
 from .store import ItemStore
 
@@ -213,6 +214,7 @@ class ImapWorker:
                 user_id[:8],
                 item.bytes,
             )
+            track_event(self.settings, EVENT_EBOOK_RECEIVED, path="/imap", props={"source": "mail"})
             stored += 1
 
         self._finish(client, uid)

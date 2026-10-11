@@ -307,3 +307,29 @@ def test_extension_routing() -> None:
 
 def test_devices_requires_session(client: TestClient) -> None:
     assert client.post("/v1/web/devices").status_code == 401
+
+
+def test_pwa_manifest_and_service_worker(client: TestClient) -> None:
+    manifest = client.get("/manifest.webmanifest")
+    assert manifest.status_code == 200
+    assert "application/manifest+json" in manifest.headers.get("content-type", "")
+    body = manifest.json()
+    assert body["name"] == "CrossInk Mail Bridge"
+    assert body["display"] == "standalone"
+    assert body["start_url"] == "/"
+
+    assert client.head("/manifest.webmanifest").status_code == 200
+    assert client.head("/").status_code == 200
+    alias = client.get("/manifest.json")
+    assert alias.status_code == 200
+    assert alias.json()["short_name"] == "Mail Bridge"
+
+    sw = client.get("/sw.js")
+    assert sw.status_code == 200
+    assert sw.headers.get("service-worker-allowed") == "/"
+    assert "skipWaiting" in sw.text
+    assert client.head("/sw.js").status_code == 200
+
+    icon = client.get("/static/icons/icon-192.png")
+    assert icon.status_code == 200
+    assert icon.headers.get("content-type", "").startswith("image/png")
