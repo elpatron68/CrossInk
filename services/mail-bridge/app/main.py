@@ -17,6 +17,7 @@ from .config import Settings, get_settings
 from .imap_worker import ImapWorker
 from .mime_extract import safe_filename
 from .rate_limit import SlidingWindowRateLimiter, client_ip
+from .security_headers import SecurityHeadersMiddleware
 from .store import ItemStore
 from .plausible import EVENT_ACCOUNT_CREATED, EVENT_EBOOK_SYNCED, track_event
 from .web_routes import create_web_router, _set_session_cookie
@@ -76,7 +77,16 @@ def create_app(settings: Settings | None = None, store: ItemStore | None = None)
     rate_limiter = SlidingWindowRateLimiter()
     upload_limiter = SlidingWindowRateLimiter()
     challenges = ChallengeStore()
-    app = FastAPI(title="CrossInk Mail Bridge", version=__version__, lifespan=lifespan)
+    docs = "/docs" if settings.enable_api_docs else None
+    app = FastAPI(
+        title="CrossInk Mail Bridge",
+        version=__version__,
+        lifespan=lifespan,
+        docs_url=docs,
+        redoc_url="/redoc" if settings.enable_api_docs else None,
+        openapi_url="/openapi.json" if settings.enable_api_docs else None,
+    )
+    app.add_middleware(SecurityHeadersMiddleware)
     app.state.settings = settings
     app.state.store = store
     app.state.rate_limiter = rate_limiter

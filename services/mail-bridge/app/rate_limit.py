@@ -8,16 +8,21 @@ from starlette.requests import Request
 
 
 def client_ip(request: Request, *, trust_proxy: bool) -> str:
+    """Resolve client IP for rate limits.
+
+    When trust_proxy is set (nginx Proxy Manager), prefer X-Real-IP (set by the
+    immediate reverse proxy to $remote_addr). Fall back to the *rightmost*
+    X-Forwarded-For hop — leftmost is client-spoofable when the proxy appends.
+    """
     if trust_proxy:
-        # Spec order: leftmost X-Forwarded-For, then X-Real-IP, then peer.
-        xff = request.headers.get("x-forwarded-for")
-        if xff:
-            first = xff.split(",")[0].strip()
-            if first:
-                return first
         real_ip = (request.headers.get("x-real-ip") or "").strip()
         if real_ip:
             return real_ip
+        xff = request.headers.get("x-forwarded-for")
+        if xff:
+            parts = [p.strip() for p in xff.split(",") if p.strip()]
+            if parts:
+                return parts[-1]
     if request.client and request.client.host:
         return request.client.host
     return "unknown"

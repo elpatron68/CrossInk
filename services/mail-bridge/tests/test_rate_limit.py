@@ -36,12 +36,13 @@ def test_client_ip_trust_proxy_xff() -> None:
         "root_path": "",
         "scheme": "http",
         "query_string": b"",
+        # Client-spoofed leftmost + proxy-appended rightmost.
         "headers": [(b"x-forwarded-for", b"203.0.113.10, 10.0.0.1")],
         "client": ("10.0.0.1", 12345),
         "server": ("test", 80),
     }
     request = Request(scope)
-    assert client_ip(request, trust_proxy=True) == "203.0.113.10"
+    assert client_ip(request, trust_proxy=True) == "10.0.0.1"
     assert client_ip(request, trust_proxy=False) == "10.0.0.1"
 
     scope_both = {
@@ -51,8 +52,8 @@ def test_client_ip_trust_proxy_xff() -> None:
             (b"x-forwarded-for", b"203.0.113.10, 10.0.0.1"),
         ],
     }
-    # Spec: X-Forwarded-For leftmost wins over X-Real-IP when both are present.
-    assert client_ip(Request(scope_both), trust_proxy=True) == "203.0.113.10"
+    # X-Real-IP (set by the reverse proxy) wins over X-Forwarded-For.
+    assert client_ip(Request(scope_both), trust_proxy=True) == "198.51.100.99"
 
     scope_real_only = {
         **scope,
