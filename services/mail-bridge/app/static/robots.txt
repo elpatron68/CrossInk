@@ -1,0 +1,9 @@
+# CrossInk Mail Bridge — public pairing/help pages only.
+User-agent: *
+Allow: /
+Allow: /help
+Disallow: /v1/
+Disallow: /docs
+Disallow: /redoc
+Disallow: /openapi.json
+Disallow: /sw.js
