@@ -101,7 +101,8 @@ Retention / cleanup (see `.env.example`):
 - `ACCOUNT_UNUSED_DAYS=7` deletes accounts that never synced (0 disables)
 - `ACCOUNT_INACTIVE_DAYS=365` deletes accounts with no sync and no received mail for that long (0 disables)
 - `SIGNUP_RATE_LIMIT_PER_HOUR=5` caps `POST /v1/accounts` per client IP per rolling hour (429 when exceeded; 0 disables)
-- `TRUST_PROXY=true` uses `X-Forwarded-For` / `X-Real-IP` for that IP when the bridge sits behind nginx or similar
+- `TRUST_PROXY=true` uses `X-Real-IP` (else rightmost `X-Forwarded-For`) for that IP behind nginx or similar
+- `ENABLE_API_DOCS=false` by default (set `true` locally if you need `/docs`)
 - Optional `PLAUSIBLE_DOMAIN` + `PLAUSIBLE_SCRIPT_URL` inject Plausible into
   pairing/help pages and send server-side custom events: `Account Created`,
   `Ebook Received` (IMAP), `Ebook Uploaded` (web), `Ebook Synced` (device ack)

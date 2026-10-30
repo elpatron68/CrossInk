@@ -21,6 +21,10 @@
 - Mail bridge Account page shows the Bridge URL and email alias with Copy buttons (same values for the reader Email Sync settings / send-to address).
 - Mail bridge web UI uses a flatter e-ink look: paper background, high-contrast text, and burgundy only for the primary action and active navigation.
 
+### Security
+
+- Mail bridge: disable public OpenAPI/Swagger docs by default (`ENABLE_API_DOCS`), add baseline security headers (nosniff, DENY framing, CSP frame-ancestors), and prefer `X-Real-IP` over spoofable leftmost `X-Forwarded-For` for signup rate limits.
+
 ### Fixed
 
 - Mail bridge IMAP: also poll non-special folders (e.g. Migadu plus-alias folders like `04awk1snig`), not only INBOX, so emailed books are ingested.

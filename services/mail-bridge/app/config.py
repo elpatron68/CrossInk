@@ -69,6 +69,9 @@ class Settings(BaseSettings):
     host: str = Field(default="0.0.0.0", validation_alias="HOST")
     port: int = Field(default=8080, validation_alias="PORT")
 
+    # FastAPI /docs /redoc /openapi.json — keep off in production.
+    enable_api_docs: bool = Field(default=False, validation_alias="ENABLE_API_DOCS")
+
     @property
     def items_dir(self) -> Path:
         return self.data_dir / "items"
