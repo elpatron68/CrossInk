@@ -188,6 +188,13 @@ def create_app(settings: Settings | None = None, store: ItemStore | None = None)
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Favicon missing")
         return FileResponse(path, media_type="image/svg+xml")
 
+    @app.api_route("/robots.txt", methods=["GET", "HEAD"], include_in_schema=False)
+    def robots_txt() -> FileResponse:
+        path = STATIC_DIR / "robots.txt"
+        if not path.is_file():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="robots.txt missing")
+        return FileResponse(path, media_type="text/plain; charset=utf-8")
+
     def _web_manifest() -> FileResponse:
         path = STATIC_DIR / "manifest.webmanifest"
         if not path.is_file():

@@ -333,3 +333,12 @@ def test_pwa_manifest_and_service_worker(client: TestClient) -> None:
     icon = client.get("/static/icons/icon-192.png")
     assert icon.status_code == 200
     assert icon.headers.get("content-type", "").startswith("image/png")
+
+
+def test_robots_txt(client: TestClient) -> None:
+    res = client.get("/robots.txt")
+    assert res.status_code == 200
+    assert "text/plain" in res.headers.get("content-type", "")
+    assert "Disallow: /v1/" in res.text
+    assert "Allow: /help" in res.text
+    assert client.head("/robots.txt").status_code == 200

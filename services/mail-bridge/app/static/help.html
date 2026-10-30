@@ -8,6 +8,23 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="Mail Bridge" />
   <title>Help · CrossInk Mail Bridge</title>
+  <meta id="metaDescription" name="description" content="How CrossInk Mail Bridge works: email sync, browser upload, privacy, and Email Sync firmware downloads." />
+  <meta name="keywords" content="CrossInk, mail bridge, help, email sync, firmware, EPUB, privacy" />
+  <meta name="author" content="CrossInk Mail Bridge" />
+  <meta name="robots" content="index, follow" />
+  <link id="canonicalLink" rel="canonical" href="https://ci-bridge.de/help" />
+  <meta property="og:type" content="website" />
+  <meta id="ogUrl" property="og:url" content="https://ci-bridge.de/help" />
+  <meta id="ogTitle" property="og:title" content="Help · CrossInk Mail Bridge" />
+  <meta id="ogDescription" property="og:description" content="How CrossInk Mail Bridge works: email sync, browser upload, privacy, and Email Sync firmware downloads." />
+  <meta property="og:site_name" content="CrossInk Mail Bridge" />
+  <meta property="og:locale" content="en_US" />
+  <meta property="og:locale:alternate" content="de_DE" />
+  <meta property="og:image" content="https://ci-bridge.de/static/icons/icon-512.png" />
+  <meta name="twitter:card" content="summary" />
+  <meta id="twitterTitle" name="twitter:title" content="Help · CrossInk Mail Bridge" />
+  <meta id="twitterDescription" name="twitter:description" content="How CrossInk Mail Bridge works: email sync, browser upload, privacy, and Email Sync firmware downloads." />
+  <meta name="twitter:image" content="https://ci-bridge.de/static/icons/icon-512.png" />
   <link rel="icon" href="/static/favicon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png" />
   <link rel="manifest" href="/manifest.json" />
@@ -194,6 +211,8 @@
     const STRINGS = {
       en: {
         title: "Help · CrossInk Mail Bridge",
+        metaDescription:
+          "How CrossInk Mail Bridge works: email sync, browser upload, privacy, and Email Sync firmware downloads.",
         titleSuffix: "Mail Bridge",
         navBack: "Back",
         navHelp: "Help",
@@ -225,6 +244,8 @@
       },
       de: {
         title: "Hilfe · CrossInk Mail Bridge",
+        metaDescription:
+          "So funktioniert die CrossInk Mail Bridge: E-Mail-Sync, Browser-Upload, Privatsphäre und Firmware-Downloads für Email Sync.",
         titleSuffix: "Mail Bridge",
         navBack: "Zurück",
         navHelp: "Hilfe",
@@ -283,6 +304,28 @@
       if (t[key] != null) el.innerHTML = t[key];
     });
     document.title = t.title;
+    {
+      const desc = t.metaDescription;
+      const pageUrl = `${location.origin}/help`;
+      const imageUrl = `${location.origin}/static/icons/icon-512.png`;
+      const setContent = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.setAttribute("content", value);
+      };
+      setContent("metaDescription", desc);
+      setContent("ogTitle", t.title);
+      setContent("ogDescription", desc);
+      setContent("ogUrl", pageUrl);
+      setContent("twitterTitle", t.title);
+      setContent("twitterDescription", desc);
+      const canonical = document.getElementById("canonicalLink");
+      if (canonical) canonical.setAttribute("href", pageUrl);
+      const ogLocale = document.querySelector('meta[property="og:locale"]');
+      if (ogLocale) ogLocale.setAttribute("content", locale === "de" ? "de_DE" : "en_US");
+      document.querySelectorAll('meta[property="og:image"], meta[name="twitter:image"]').forEach((el) => {
+        el.setAttribute("content", imageUrl);
+      });
+    }
 
     if (window.isSecureContext && "serviceWorker" in navigator) {
       navigator.serviceWorker

@@ -8,6 +8,25 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="Mail Bridge" />
   <title>CrossInk Mail Bridge</title>
+  <meta id="metaDescription" name="description" content="Self-hosted CrossInk mail bridge: email or upload ebooks, sync to your e-reader over HTTPS." />
+  <meta name="keywords" content="CrossInk, e-reader, mail bridge, email sync, EPUB, ebook, self-hosted" />
+  <meta name="author" content="CrossInk Mail Bridge" />
+  <meta name="robots" content="index, follow" />
+  <link id="canonicalLink" rel="canonical" href="https://ci-bridge.de/" />
+  <meta property="og:type" content="website" />
+  <meta id="ogUrl" property="og:url" content="https://ci-bridge.de/" />
+  <meta id="ogTitle" property="og:title" content="CrossInk Mail Bridge" />
+  <meta id="ogDescription" property="og:description" content="Self-hosted CrossInk mail bridge: email or upload ebooks, sync to your e-reader over HTTPS." />
+  <meta property="og:site_name" content="CrossInk Mail Bridge" />
+  <meta property="og:locale" content="en_US" />
+  <meta id="ogLocaleAlt" property="og:locale:alternate" content="de_DE" />
+  <meta property="og:image" content="https://ci-bridge.de/static/icons/icon-512.png" />
+  <meta property="og:image:width" content="512" />
+  <meta property="og:image:height" content="512" />
+  <meta name="twitter:card" content="summary" />
+  <meta id="twitterTitle" name="twitter:title" content="CrossInk Mail Bridge" />
+  <meta id="twitterDescription" name="twitter:description" content="Self-hosted CrossInk mail bridge: email or upload ebooks, sync to your e-reader over HTTPS." />
+  <meta name="twitter:image" content="https://ci-bridge.de/static/icons/icon-512.png" />
   <link rel="icon" href="/static/favicon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png" />
   <link rel="manifest" href="/manifest.json" />
@@ -263,6 +282,7 @@
     <section id="panelCreate" class="panel visible">
       <p class="lede" data-i18n-html="lede"></p>
       <p class="notice" role="note" data-i18n-html="firmwareNotice"></p>
+      <p class="hint" data-i18n-html="upstreamNotice"></p>
       <button id="createBtn" type="button" data-i18n="createBtn">Create account</button>
       <p class="hint" data-i18n="multiDevice"></p>
       <p class="hint" data-i18n="retention"></p>
@@ -371,6 +391,8 @@
     const STRINGS = {
       en: {
         title: "CrossInk Mail Bridge",
+        metaDescription:
+          "Self-hosted CrossInk mail bridge: email or upload ebooks, sync to your e-reader over HTTPS.",
         titleSuffix: "Mail Bridge",
         navCreate: "Create",
         navLogin: "Sign in",
@@ -378,6 +400,8 @@
         navHelp: "Help",
         lede: "Create an account to get a private email alias and a device token. Send <code>.epub</code> / <code>.txt</code> books to the alias, then sync on your reader.",
         firmwareNotice: "<strong>Requires modified CrossInk firmware</strong> with Email Sync — not stock CrossInk/CrossPoint. <a href=\"/help#firmware\">Download the firmware prerelease</a>.",
+        upstreamNotice:
+          "Like this idea? Please <a href=\"https://github.com/crosspoint-reader/crosspoint-reader/discussions/3954\" rel=\"noopener noreferrer\" target=\"_blank\">upvote / support the upstream discussion</a> so Email Sync can be considered for CrossPoint.",
         createBtn: "Create account",
         createdBtn: "Account created",
         multiDevice: "Multiple readers? Create a separate account (alias + token) for each device — or sign in later with a passkey and issue a new device token.",
@@ -427,6 +451,8 @@
       },
       de: {
         title: "CrossInk Mail Bridge",
+        metaDescription:
+          "Selbst gehostete CrossInk-Mail-Bridge: Bücher per E-Mail oder Upload senden und per HTTPS auf den E-Reader synchronisieren.",
         titleSuffix: "Mail Bridge",
         navCreate: "Anlegen",
         navLogin: "Anmelden",
@@ -434,6 +460,8 @@
         navHelp: "Hilfe",
         lede: "Lege einen Account an, um einen privaten E-Mail-Alias und ein Gerätetoken zu erhalten. Sende <code>.epub</code>- / <code>.txt</code>-Bücher an den Alias und synchronisiere danach auf dem Reader.",
         firmwareNotice: "<strong>Nur mit modifizierter CrossInk-Firmware</strong> inkl. E-Mail-Sync — nicht mit Stock-CrossInk/CrossPoint. <a href=\"/help#firmware\">Firmware-Prerelease herunterladen</a>.",
+        upstreamNotice:
+          "Gefällt dir das Feature? Bitte <a href=\"https://github.com/crosspoint-reader/crosspoint-reader/discussions/3954\" rel=\"noopener noreferrer\" target=\"_blank\">upvote / Support in der Upstream-Diskussion</a>, damit Email Sync für CrossPoint erwogen werden kann.",
         createBtn: "Account anlegen",
         createdBtn: "Account angelegt",
         multiDevice: "Mehrere Reader? Eigenen Account pro Gerät — oder später per Passkey anmelden und ein neues Gerätetoken ausstellen.",
@@ -515,6 +543,28 @@
         if (t[key] != null) el.placeholder = t[key];
       });
       document.title = t.title;
+      const desc = t.metaDescription;
+      const pageUrl = `${location.origin}/`;
+      const imageUrl = `${location.origin}/static/icons/icon-512.png`;
+      const setContent = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.setAttribute("content", value);
+      };
+      setContent("metaDescription", desc);
+      setContent("ogTitle", t.title);
+      setContent("ogDescription", desc);
+      setContent("ogUrl", pageUrl);
+      setContent("twitterTitle", t.title);
+      setContent("twitterDescription", desc);
+      const canonical = document.getElementById("canonicalLink");
+      if (canonical) canonical.setAttribute("href", pageUrl);
+      const ogLocale = document.querySelector('meta[property="og:locale"]');
+      if (ogLocale) ogLocale.setAttribute("content", locale === "de" ? "de_DE" : "en_US");
+      const ogLocaleAlt = document.getElementById("ogLocaleAlt");
+      if (ogLocaleAlt) ogLocaleAlt.setAttribute("content", locale === "de" ? "en_US" : "de_DE");
+      document.querySelectorAll('meta[property="og:image"], meta[name="twitter:image"]').forEach((el) => {
+        el.setAttribute("content", imageUrl);
+      });
     }
     applyI18n();
 

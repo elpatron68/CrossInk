@@ -57,6 +57,8 @@ production, e.g. `ci-bridge.elpatron.me`). Local HTTP works with
 | Method | Path | Auth | Purpose |
 | --- | --- | --- | --- |
 | `GET` | `/` | no | Pairing / web app UI |
+| `GET` | `/help` | no | Help / privacy page |
+| `GET` | `/robots.txt` | no | Crawl policy (`Allow: /`, `/help`; `Disallow: /v1/…`) |
 | `GET` | `/manifest.json` | no | PWA web app manifest (also `/manifest.webmanifest`) |
 | `GET` | `/sw.js` | no | Installability-only service worker (`Cache-Control: no-store`) |
 | `GET` | `/v1/health` | no | Liveness |
