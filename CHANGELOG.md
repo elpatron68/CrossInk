@@ -2,6 +2,7 @@
 
 ### Added
 
+- Mail bridge web UI footer shows the total number of books successfully delivered to readers.
 - Mail bridge Plausible analytics: configurable `PLAUSIBLE_DOMAIN` / `PLAUSIBLE_SCRIPT_URL`, plus custom goals for account created, ebook received (mail), uploaded, and reader-synced.
 - Mail bridge web UI is installable as a PWA (Homescreen / standalone; online-only, no offline cache).
 - Email Sync: download `.epub` and `.txt` books from a self-hosted mail bridge (IMAP ingest + one-tap HTTPS pull). Configure bridge URL and device token under Settings → Email Sync (on-device or the device web portal), or start from File Transfer / a shortcut.

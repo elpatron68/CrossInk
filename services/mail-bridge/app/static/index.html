@@ -56,8 +56,9 @@
       color: var(--ink);
       background: var(--bg);
       display: flex;
-      align-items: flex-start;
-      justify-content: center;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
       padding: 1.25rem 0.85rem;
       overflow-x: hidden;
     }
@@ -264,6 +265,19 @@
     }
     .stack + .stack { margin-top: 0.75rem; }
     #secureAgain { margin-bottom: 0.75rem; }
+    .site-footer {
+      width: 100%;
+      max-width: 36rem;
+      min-width: 0;
+      margin-top: 0.85rem;
+      text-align: center;
+    }
+    .site-footer p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.4;
+    }
   </style>
 </head>
 <body>
@@ -388,6 +402,9 @@
       </div>
     </section>
   </main>
+  <footer class="site-footer">
+    <p id="deliveredCount" hidden></p>
+  </footer>
   <script>
     const STRINGS = {
       en: {
@@ -449,6 +466,7 @@
         unameAvailable: "Username is available.",
         unameOwn: "This is your username.",
         unameChecking: "Checking…",
+        deliveredCount: "{n} books delivered to readers",
       },
       de: {
         title: "CrossInk Mail Bridge",
@@ -509,6 +527,7 @@
         unameAvailable: "Benutzername ist frei.",
         unameOwn: "Das ist dein Benutzername.",
         unameChecking: "Prüfe…",
+        deliveredCount: "{n} Bücher an Reader übertragen",
       },
     };
 
@@ -568,6 +587,21 @@
       });
     }
     applyI18n();
+
+    (function loadDeliveredCount() {
+      const el = document.getElementById("deliveredCount");
+      if (!el) return;
+      fetch("/v1/stats")
+        .then((r) => (r.ok ? r.json() : Promise.reject()))
+        .then((data) => {
+          const n = Number(data && data.delivered_books);
+          if (!Number.isFinite(n) || n < 0) return;
+          const formatted = n.toLocaleString(locale);
+          el.textContent = (t.deliveredCount || "{n}").replace("{n}", formatted);
+          el.hidden = false;
+        })
+        .catch(() => {});
+    })();
 
     function showError(msg) {
       okmsg.classList.remove("visible");

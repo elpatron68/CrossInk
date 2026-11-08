@@ -104,6 +104,13 @@ def create_app(settings: Settings | None = None, store: ItemStore | None = None)
             imap_configured=settings.imap_configured,
         )
 
+    @app.get("/v1/stats")
+    def stats() -> JSONResponse:
+        return JSONResponse(
+            {"delivered_books": store.delivered_book_count()},
+            headers={"Cache-Control": "public, max-age=30"},
+        )
+
     @app.post("/v1/accounts", response_model=CreateAccountOut, status_code=status.HTTP_201_CREATED)
     def create_account(body: CreateAccountIn, request: Request, response: Response) -> CreateAccountOut:
         ip = client_ip(request, trust_proxy=settings.trust_proxy)
