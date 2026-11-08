@@ -54,8 +54,9 @@
       color: var(--ink);
       background: var(--bg);
       display: flex;
-      align-items: flex-start;
-      justify-content: center;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
       padding: 1.25rem 0.85rem;
       overflow-x: hidden;
     }
@@ -153,6 +154,19 @@
     }
     .muted { color: var(--muted); }
     p, li, .lede { overflow-wrap: anywhere; }
+    .site-footer {
+      width: 100%;
+      max-width: 40rem;
+      min-width: 0;
+      margin-top: 0.85rem;
+      text-align: center;
+    }
+    .site-footer p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.4;
+    }
     @media (min-width: 480px) {
       body { padding: 2rem 1rem; }
       main { padding: 2rem 1.75rem; }
@@ -207,6 +221,9 @@
     <p class="callout" data-i18n="privacyAdvice"></p>
     <p class="muted" data-i18n="privacyNote"></p>
   </main>
+  <footer class="site-footer">
+    <p id="deliveredCount" hidden></p>
+  </footer>
   <script>
     const STRINGS = {
       en: {
@@ -241,6 +258,7 @@
         privacyAnalytics: "If the operator sets PLAUSIBLE_DOMAIN, the pairing/help pages may load privacy-oriented Plausible analytics — otherwise no third-party tracker is injected by this app.",
         privacyAdvice: "Do not send books or documents you would not trust the bridge operator (and their email host) to handle.",
         privacyNote: "Defaults above match the open-source bridge configuration; a self-hoster may change retention or analytics.",
+        deliveredCount: "{n} books delivered to readers",
       },
       de: {
         title: "Hilfe · CrossInk Mail Bridge",
@@ -274,6 +292,7 @@
         privacyAnalytics: "Wenn der Betreiber PLAUSIBLE_DOMAIN setzt, können Pairing-/Hilfe-Seiten Plausible laden — sonst injiziert diese App keinen Third-Party-Tracker.",
         privacyAdvice: "Sende keine Bücher oder Dokumente, die du dem Bridge-Betreiber (und dem E-Mail-Host) nicht anvertrauen würdest.",
         privacyNote: "Die genannten Defaults entsprechen der Open-Source-Konfiguration; Self-Hoster können Retention oder Analytics ändern.",
+        deliveredCount: "{n} Bücher an Reader übertragen",
       },
     };
 
@@ -326,6 +345,21 @@
         el.setAttribute("content", imageUrl);
       });
     }
+
+    (function loadDeliveredCount() {
+      const el = document.getElementById("deliveredCount");
+      if (!el) return;
+      fetch("/v1/stats")
+        .then((r) => (r.ok ? r.json() : Promise.reject()))
+        .then((data) => {
+          const n = Number(data && data.delivered_books);
+          if (!Number.isFinite(n) || n < 0) return;
+          const formatted = n.toLocaleString(locale);
+          el.textContent = (t.deliveredCount || "{n}").replace("{n}", formatted);
+          el.hidden = false;
+        })
+        .catch(() => {});
+    })();
 
     if (window.isSecureContext && "serviceWorker" in navigator) {
       navigator.serviceWorker

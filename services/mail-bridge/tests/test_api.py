@@ -114,6 +114,52 @@ def test_tenant_isolation(client: TestClient, store: ItemStore, settings: Settin
         assert store.get_item(item.id, a["user_id"]) is None
 
 
+def test_stats_public_and_ack_increments(client: TestClient, store: ItemStore, settings: Settings) -> None:
+    r = client.get("/v1/stats")
+    assert r.status_code == 200
+    assert r.json() == {"delivered_books": 0}
+    assert "max-age=30" in r.headers.get("cache-control", "")
+
+    token = _token()
+    account = client.post("/v1/accounts", json={"device_token": token}).json()
+    item = store.add_item(
+        filename="counted.epub",
+        content=b"PK\x03\x04count",
+        sha256="sha-count",
+        content_type="application/epub+zip",
+        imap_uid="42",
+        user_id=account["user_id"],
+    )
+    headers = {"Authorization": f"Bearer {token}"}
+    assert client.post(f"/v1/items/{item.id}/ack", headers=headers).status_code == 200
+    assert client.get("/v1/stats").json() == {"delivered_books": 1}
+    # Repeat ack must not double-count (404 after delete_on_ack, else "already").
+    second = client.post(f"/v1/items/{item.id}/ack", headers=headers)
+    if settings.delete_on_ack:
+        assert second.status_code == 404
+        assert store.get_item(item.id, account["user_id"]) is None
+    else:
+        assert second.status_code == 200
+    assert client.get("/v1/stats").json() == {"delivered_books": 1}
+    assert store.delivered_book_count() == 1
+
+
+def test_ack_already_does_not_increment(store: ItemStore) -> None:
+    created = store.create_account(_token())
+    item = store.add_item(
+        filename="keep.epub",
+        content=b"PK\x03\x04keep",
+        sha256="sha-keep",
+        content_type="application/epub+zip",
+        imap_uid="7",
+        user_id=created.user_id,
+    )
+    assert store.ack(item.id, created.user_id, delete_files=False) == "new"
+    assert store.delivered_book_count() == 1
+    assert store.ack(item.id, created.user_id, delete_files=False) == "already"
+    assert store.delivered_book_count() == 1
+
+
 def test_pairing_page_served(client: TestClient) -> None:
     r = client.get("/")
     assert r.status_code == 200
@@ -122,6 +168,7 @@ def test_pairing_page_served(client: TestClient) -> None:
     assert b"Account anlegen" in r.content
     assert b"Create account" in r.content
     assert b'href="/help"' in r.content
+    assert b'id="deliveredCount"' in r.content
 
 
 def test_help_page_served(client: TestClient) -> None:
@@ -131,6 +178,7 @@ def test_help_page_served(client: TestClient) -> None:
     assert "Privatsphäre" in r.text
     assert "Privacy" in r.text
     assert b'href="/"' in r.content
+    assert b'id="deliveredCount"' in r.content
     assert r.headers.get("cache-control", "").startswith("no-store")
 
 

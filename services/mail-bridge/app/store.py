@@ -189,6 +189,32 @@ class ItemStore:
                 """
             )
             conn.execute("CREATE INDEX IF NOT EXISTS idx_web_sessions_user ON web_sessions(user_id)")
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS counters (
+                    name TEXT PRIMARY KEY,
+                    value INTEGER NOT NULL
+                )
+                """
+            )
+            existing = conn.execute(
+                "SELECT 1 FROM counters WHERE name = 'delivered_books' LIMIT 1"
+            ).fetchone()
+            if existing is None:
+                delivered = conn.execute(
+                    "SELECT COUNT(*) AS n FROM items WHERE status = 'delivered'"
+                ).fetchone()["n"]
+                conn.execute(
+                    "INSERT INTO counters (name, value) VALUES ('delivered_books', ?)",
+                    (int(delivered),),
+                )
+
+    def delivered_book_count(self) -> int:
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT value FROM counters WHERE name = 'delivered_books'"
+            ).fetchone()
+        return int(row["value"]) if row is not None else 0
 
     def format_alias_email(self, mail_local: str) -> str:
         return f"{self.mail_local_prefix}+{mail_local}@{self.mail_domain}"
@@ -568,6 +594,9 @@ class ItemStore:
                 conn.execute(
                     "UPDATE items SET status = 'delivered' WHERE id = ? AND user_id = ?",
                     (item_id, user_id),
+                )
+                conn.execute(
+                    "UPDATE counters SET value = value + 1 WHERE name = 'delivered_books'"
                 )
             if delete_files:
                 path = Path(row["path"])
